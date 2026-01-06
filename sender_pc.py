@@ -7,7 +7,7 @@ import threading
 # Configurações de Rede
 # Para teste local, use "127.0.0.1". 
 # Se for monitorar OUTRO PC, coloque o IP do PC que está rodando o receiver_notebook.py
-DEST_IP = "127.0.0.1" 
+DEST_IP = "192.168.10.137"  # IP do Notebook
 PORTA = 5005
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
