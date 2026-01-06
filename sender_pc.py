@@ -2,8 +2,6 @@ import psutil
 import socket
 import time
 import json
-import threading
-import sys
 
 # Tenta carregar módulo de Hardware Monitor (DLL)
 try:
@@ -12,41 +10,25 @@ try:
 except ImportError:
     HAS_HWMON = False
 
-# Configurações de Rede
-DEST_IP = "192.168.10.137" 
+# ========== CONFIGURAÇÕES ==========
+DEST_IP = "192.168.10.137"  # IP do Notebook
 PORTA = 5005
+INTERVALO = 0.5  # Segundos entre envios
+# ===================================
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # Inicializa Monitor de Hardware via DLL
 monitor = None
 if HAS_HWMON:
-    print("Inicializando HardwareMonitor...")
+    print("Inicializando HardwareMonitor (LibreHardwareMonitor DLL)...")
     monitor = hardware_monitor.HardwareMonitor()
+    if not monitor.enabled:
+        print("AVISO: DLL não carregou. Rodando com dados limitados (psutil).")
+        monitor = None
 else:
-    print("Módulo 'hardware_monitor.py' não encontrado.")
+    print("Módulo 'hardware_monitor.py' não encontrado. Rodando com psutil apenas.")
 
-# --- Fallbacks (Legacy) ---
-# Tenta importar pyadl para AMD (caso DLL falhe)
-try:
-    from pyadl import ADLManager
-    HAS_PYADL = True
-except:
-    HAS_PYADL = False
-
-def obter_gpu_fallback():
-    """Fallback para GPU AMD via pyadl se DLL falhar."""
-    load = 0
-    temp = 0
-    if HAS_PYADL:
-        try:
-            devices = ADLManager.getDevices()
-            if devices:
-                gpu = devices[0]
-                temp = float(gpu.getCurrentTemperature())
-        except:
-            pass
-    return load, temp
 
 def calcular_rede(last_net_io, last_time):
     now = time.time()
@@ -59,77 +41,124 @@ def calcular_rede(last_net_io, last_time):
     
     return (sent/1024)/delta, (recv/1024)/delta, net_io, now
 
+
 def medir_ping(host="8.8.8.8"):
     try:
         t1 = time.time()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
-        # Tenta conectar no Google DNS (porta 53)
-        s.connect((host, 53)) 
+        s.connect((host, 53))
         s.close()
         return round((time.time() - t1) * 1000, 1)
     except:
         return 0
 
-print(f"Sentinela iniciada. Destino: {DEST_IP}:{PORTA}")
-print("Ctrl+C para sair.")
+
+print(f"\n=== SENTINELA DE TELEMETRIA ===")
+print(f"Destino: {DEST_IP}:{PORTA}")
+print(f"Intervalo: {INTERVALO}s")
+print("Ctrl+C para sair.\n")
 
 last_net = psutil.net_io_counters()
 last_t = time.time()
 
 try:
     while True:
-        # 1. Dados Básicos (PSUtil é rápido e confiável para uso global)
-        cpu_usage_psutil = psutil.cpu_percent(interval=0.5)
-        ram = psutil.virtual_memory()
-        
-        # 2. Dados Avançados (DLL)
-        hw_data = {"cpu_temp": 0, "cpu_voltage": 0, "gpu_temp": 0, "gpu_load": 0}
+        # 1. Dados via DLL (se disponível)
+        hw = None
         if monitor and monitor.enabled:
-            hw_data = monitor.fetch_data()
+            hw = monitor.fetch_data()
         
-        # Consolidação de dados (DLL tem prioridade, depois Fallbacks)
+        # 2. Dados básicos via psutil (fallback/complemento)
+        cpu_percent = psutil.cpu_percent(interval=INTERVALO)
+        mem = psutil.virtual_memory()
         
-        # CPU
-        final_cpu_temp = hw_data["cpu_temp"]
-        final_cpu_volt = hw_data["cpu_voltage"]
-        
-        # GPU (Se DLL retornar 0, tenta fallback)
-        final_gpu_temp = hw_data["gpu_temp"]
-        final_gpu_load = hw_data["gpu_load"]
-        
-        if final_gpu_temp == 0 and HAS_PYADL:
-            _, t_fallback = obter_gpu_fallback()
-            final_gpu_temp = t_fallback
-
         # 3. Rede
         up, down, last_net, last_t = calcular_rede(last_net, last_t)
         ping = medir_ping()
         
-        payload = {
-            "cpu": {
-                "usage": cpu_usage_psutil, # PSUtil é melhor para % global
-                "temp": final_cpu_temp,
-                "voltage": final_cpu_volt
-            },
-            "gpu": {
-                "load": final_gpu_load,
-                "temp": final_gpu_temp
-            },
-            "ram": {
-                "percent": ram.percent
-            },
-            "network": {
-                "down_kbps": round(down, 1),
-                "up_kbps": round(up, 1),
-                "ping_ms": ping
+        # 4. Monta payload completo
+        if hw:
+            payload = {
+                "cpu": {
+                    "usage": cpu_percent,  # psutil é mais preciso para % global
+                    "temp": round(hw["cpu"]["temp"], 1),
+                    "voltage": round(hw["cpu"]["voltage"], 3),
+                    "power": round(hw["cpu"]["power"], 1),
+                    "clock": round(hw["cpu"]["clock"], 0)
+                },
+                "gpu": {
+                    "load": round(hw["gpu"]["load"], 1),
+                    "temp": round(hw["gpu"]["temp"], 1),
+                    "voltage": round(hw["gpu"]["voltage"], 3),
+                    "clock_core": round(hw["gpu"]["clock_core"], 0),
+                    "clock_mem": round(hw["gpu"]["clock_mem"], 0),
+                    "power": round(hw["gpu"]["power"], 1),
+                    "fan": round(hw["gpu"]["fan"], 0)
+                },
+                "mobo": {
+                    "temp": round(hw["mobo"]["temp"], 1),
+                    "voltage_12v": round(hw["mobo"]["voltage_12v"], 2),
+                    "voltage_5v": round(hw["mobo"]["voltage_5v"], 2),
+                    "voltage_3v": round(hw["mobo"]["voltage_3v"], 2)
+                },
+                "ram": {
+                    "percent": mem.percent,
+                    "used_gb": round(mem.used / (1024**3), 2),
+                    "total_gb": round(mem.total / (1024**3), 2)
+                },
+                "storage": hw["storage"],  # Lista de discos
+                "fans": hw["fans"],         # Lista de ventoinhas
+                "network": {
+                    "down_kbps": round(down, 1),
+                    "up_kbps": round(up, 1),
+                    "ping_ms": ping
+                }
             }
-        }
+        else:
+            # Modo limitado (sem DLL)
+            payload = {
+                "cpu": {
+                    "usage": cpu_percent,
+                    "temp": 0,
+                    "voltage": 0,
+                    "power": 0,
+                    "clock": 0
+                },
+                "gpu": {
+                    "load": 0,
+                    "temp": 0,
+                    "voltage": 0,
+                    "clock_core": 0,
+                    "clock_mem": 0,
+                    "power": 0,
+                    "fan": 0
+                },
+                "mobo": {
+                    "temp": 0,
+                    "voltage_12v": 0,
+                    "voltage_5v": 0,
+                    "voltage_3v": 0
+                },
+                "ram": {
+                    "percent": mem.percent,
+                    "used_gb": round(mem.used / (1024**3), 2),
+                    "total_gb": round(mem.total / (1024**3), 2)
+                },
+                "storage": [],
+                "fans": [],
+                "network": {
+                    "down_kbps": round(down, 1),
+                    "up_kbps": round(up, 1),
+                    "ping_ms": ping
+                }
+            }
         
+        # Envia
         sock.sendto(json.dumps(payload).encode(), (DEST_IP, PORTA))
 
 except KeyboardInterrupt:
-    print("\nParando...")
+    print("\nEncerrando...")
     if monitor:
         monitor.close()
     sock.close()
