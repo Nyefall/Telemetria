@@ -1,6 +1,7 @@
 import socket
 import json
 import sys
+import select
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from collections import deque
@@ -80,6 +81,11 @@ def update(frame):
     last_data = None
     while True:
         try:
+            # Check if socket is readable before recv to avoid BlockingIOError exception noise
+            readable, _, _ = select.select([sock], [], [], 0.0)
+            if not readable:
+                break
+            
             data, addr = sock.recvfrom(4096)
             last_data = data
         except BlockingIOError:
