@@ -31,6 +31,7 @@ venv/
 
 # Logs
 *.log
+logs/
 
 # Windows thumbnail database
 Thumbs.db

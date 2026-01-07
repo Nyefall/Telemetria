@@ -1,60 +1,150 @@
-# Central de Telemetria (PC -> Notebook)
+# ⚡ Central de Telemetria (PC → Notebook)
 
-Este projeto permite monitorar o desempenho do seu PC Principal (Sender) utilizando a tela do seu Notebook (Receiver) como um painel de telemetria dedicado, via rede local.
+Sistema de monitoramento em tempo real que exibe métricas do seu PC Principal em um dashboard dedicado no Notebook, via rede local UDP.
 
-## Funcionalidades
+![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-*   **Monitoramento em Tempo Real:**
-    *   Uso de CPU, GPU e RAM.
-    *   Temperaturas (CPU e GPU).
-    *   Velocidade de Rede (Upload/Download).
-    *   Latência e Ping entre as máquinas.
-*   **Visualização Gráfica:** Dashboard completo rodando no notebook com gráficos históricos (últimos 60s).
-*   **Baixo Impacto:** O Sender é otimizado para não impactar o desempenho dos jogos.
+## ✨ Funcionalidades
 
-## Pré-requisitos
+### Monitoramento em Tempo Real
+- **CPU**: Uso, Temperatura, Voltagem, Consumo (W), Clock
+- **GPU**: Uso, Temperatura, Voltagem, Clock Core/Memory, VRAM, Fan RPM
+- **RAM**: Uso percentual, GB Usado/Total
+- **Storage**: Temperatura, Saúde, Espaço Usado (múltiplos discos)
+- **Motherboard**: Temperatura, Fans RPM
+- **Rede**: Upload/Download (KB/s), Ping
 
-1.  **Python 3.8+** instalado em ambas as máquinas.
-2.  **Conexão de Rede:** Idealmente via cabo Ethernet direto ou Switch Gigabit para menor latência, mas funciona via Wi-Fi.
-3.  **LibreHardwareMonitor (Opcional):** Recomendado no PC Principal para obter leituras precisas de Voltagem e Temperatura da CPU via WMI.
+### Interface
+- 🖥️ Dashboard responsivo com 6 painéis
+- 📊 Gráficos históricos (últimos 60 segundos)
+- 🌙 Tema escuro/claro (tecla `T`)
+- 🔔 Notificações Windows para alertas críticos
+- 📝 Log de histórico em CSV
 
-## Instalação
+### Rede
+- 📡 **Broadcast UDP**: Auto-descoberta na rede (zero config!)
+- 🔒 **Unicast**: Modo IP fixo disponível
+- 📦 **Compactação**: Payload gzip para menor tráfego
 
-1.  Clone este repositório em ambas as máquinas.
-2.  Instale as dependências:
+## 📋 Pré-requisitos
 
+- **Python 3.8+** em ambas as máquinas
+- **Windows 10/11** (usa APIs nativas)
+- **Rede local**: Ethernet ou Wi-Fi na mesma rede
+
+## 🚀 Instalação
+
+### 1. Clone o repositório
+```bash
+git clone https://github.com/Nyefall/Telemetria.git
+cd Telemetria
+```
+
+### 2. Crie um ambiente virtual (recomendado)
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+### 3. Instale as dependências
 ```bash
 pip install -r requirements.txt
 ```
 
-> **Nota:** No Notebook (Receiver), a biblioteca `pyadl`, `wmi` e `psutil` podem não ser estritamente necessárias se ele for apenas exibir, mas o `matplotlib` é essencial. Recomendo instalar tudo para garantir compatibilidade.
+### 4. Baixe a DLL do LibreHardwareMonitor
+Execute o script auxiliar ou baixe manualmente:
+```bash
+python download_deps.py
+```
+> Coloque `LibreHardwareMonitorLib.dll` na pasta `libs/`
 
-## Configuração
+## ⚙️ Configuração
 
-1.  Descubra o IP do Notebook:
-    *   Abra o terminal no notebook e digite `ipconfig` (Windows) ou `ip a` (Linux).
-    *   Anote o endereço (ex: `192.168.10.137`).
-2.  Edite o arquivo `sender_pc.py` no PC Principal:
-    *   Atualize a variável `NOTEBOOK_IP` com o IP anotado.
+O arquivo `config.json` é criado automaticamente na primeira execução:
 
-## Como Usar
+```json
+{
+    "modo": "broadcast",
+    "dest_ip": "255.255.255.255",
+    "porta": 5005,
+    "intervalo": 0.5
+}
+```
 
-### 1. No PC Principal (Sender)
-Execute o script que coleta e envia os dados:
+| Parâmetro | Descrição |
+|-----------|-----------|
+| `modo` | `"broadcast"` (auto-descoberta) ou `"unicast"` (IP fixo) |
+| `dest_ip` | IP do notebook (ignorado em broadcast) |
+| `porta` | Porta UDP (deve ser igual em ambos) |
+| `intervalo` | Segundos entre atualizações |
 
+> 💡 **Modo Broadcast**: Não precisa configurar IPs! Sender e Receiver se encontram automaticamente na rede.
+
+## 🎮 Como Usar
+
+### No PC Principal (Sender)
+
+**Opção 1**: Clique duplo no `run_sender_admin.bat` (solicita admin)
+
+**Opção 2**: Execute via terminal como administrador:
 ```bash
 python sender_pc.py
 ```
 
-### 2. No Notebook (Receiver)
-Execute o script que abre o dashboard:
+> ⚠️ **Importante**: Precisa rodar como administrador para acessar sensores de hardware.
 
+O sender minimiza automaticamente para a **bandeja do sistema** (System Tray).
+
+### No Notebook (Receiver)
 ```bash
 python receiver_notebook.py
 ```
 
-## Solução de Problemas
+## ⌨️ Atalhos de Teclado (Receiver)
 
-*   **Gráficos não aparecem / "Aguardando dados...":** Verifique se o Firewall do Windows no notebook permitiu a conexão Python na porta UDP 5005. Tente desativar firewall temporariamente para testar.
-*   **Temperatura GPU "N/A":** Se sua placa não for AMD, reinstale drivers ou verifique compatibilidade. Para Nvidia, futuras atualizações podem ser necessárias (requer bibliotecas proprietárias `nvml`).
-*   **Voltagem CPU Zerada:** Certifique-se de que o *LibreHardwareMonitor* está aberto e rodando no PC Principal.
+| Tecla | Ação |
+|-------|------|
+| `F` ou `F11` | Alternar Fullscreen |
+| `G` | Mostrar/Ocultar Gráficos |
+| `T` | Alternar Tema (Escuro/Claro) |
+| `L` | Ativar/Desativar Log CSV |
+| `Q` ou `ESC` | Sair |
+
+## 📁 Estrutura do Projeto
+
+```
+Telemetria/
+├── sender_pc.py           # Coleta e envia dados (PC)
+├── receiver_notebook.py   # Dashboard de exibição (Notebook)
+├── hardware_monitor.py    # Interface com LibreHardwareMonitor
+├── config.json           # Configurações de rede
+├── requirements.txt      # Dependências Python
+├── run_sender_admin.bat  # Launcher com elevação admin
+├── libs/
+│   └── LibreHardwareMonitorLib.dll
+└── logs/                 # Logs CSV (criado automaticamente)
+```
+
+## 🔧 Solução de Problemas
+
+### "Aguardando dados..." no Receiver
+1. Verifique se o Sender está rodando
+2. Confira se ambos estão na mesma rede
+3. Libere a porta UDP 5005 no Firewall do Windows
+
+### Temperaturas zeradas
+- Execute o Sender como **Administrador**
+- Verifique se a DLL está em `libs/`
+
+### Interface borrada no notebook
+- O DPI Awareness já está habilitado, mas se persistir, ajuste a escala do Windows
+
+## 📜 Licença
+
+MIT License - Veja [LICENSE](LICENSE) para detalhes.
+
+---
+
+Desenvolvido com ☕ e Python
