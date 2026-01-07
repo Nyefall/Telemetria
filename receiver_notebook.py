@@ -112,6 +112,7 @@ class TelemetryDashboard:
         # Configuração de conexão
         self.sender_ip = CONFIG.get("sender_ip", "")
         self.connection_mode = CONFIG.get("modo", "auto")
+        self.porta = CONFIG.get("porta", 5005)
         self.restart_receiver = False  # Flag para reiniciar receiver
         
         # Dados (encapsulados na classe)
@@ -318,11 +319,11 @@ class TelemetryDashboard:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                sock.bind((HOST, PORTA))
+                sock.bind((HOST, self.porta))
                 sock.settimeout(1.0)
                 
                 mode_str = f"Manual ({self.sender_ip})" if self.sender_ip else "Auto (broadcast)"
-                print(f"[Receiver] Ouvindo em {HOST}:{PORTA} - Modo: {mode_str}")
+                print(f"[Receiver] Ouvindo em {HOST}:{self.porta} - Modo: {mode_str}")
                 
                 self.restart_receiver = False
                 
@@ -653,7 +654,7 @@ class TelemetryDashboard:
         """Mostra janela de configuração de IP do sender."""
         config_window = tk.Toplevel(self.root)
         config_window.title("Configuração de Conexão")
-        config_window.geometry("400x300")
+        config_window.geometry("420x380")
         config_window.resizable(False, False)
         config_window.configure(bg=self.colors["bg"])
         config_window.transient(self.root)
@@ -661,8 +662,8 @@ class TelemetryDashboard:
         
         # Centralizar na tela
         config_window.update_idletasks()
-        x = (config_window.winfo_screenwidth() // 2) - 200
-        y = (config_window.winfo_screenheight() // 2) - 150
+        x = (config_window.winfo_screenwidth() // 2) - 210
+        y = (config_window.winfo_screenheight() // 2) - 190
         config_window.geometry(f"+{x}+{y}")
         
         # Título
@@ -747,9 +748,34 @@ class TelemetryDashboard:
         ip_entry.pack(fill=tk.X, pady=5, ipady=5)
         ip_entry.insert(0, self.sender_ip or "192.168.1.100")
         
+        # Porta
+        port_frame = tk.Frame(main_frame, bg=self.colors["bg"])
+        port_frame.pack(fill=tk.X, pady=5)
+        
+        port_label = tk.Label(
+            port_frame,
+            text="Porta UDP:",
+            font=self.font_small,
+            fg=self.colors["text"],
+            bg=self.colors["bg"]
+        )
+        port_label.pack(anchor="w")
+        
+        port_entry = tk.Entry(
+            port_frame,
+            font=self.font_value,
+            bg=self.colors["panel"],
+            fg=self.colors["text"],
+            insertbackground=self.colors["text"],
+            relief="flat",
+            width=10
+        )
+        port_entry.pack(anchor="w", pady=5, ipady=5)
+        port_entry.insert(0, str(self.porta))
+        
         # Dica
         tip_label = tk.Label(
-            ip_frame,
+            port_frame,
             text="Dica: No PC, execute 'ipconfig' para ver o IP local",
             font=self.font_help,
             fg=self.colors["dim"],
@@ -759,11 +785,11 @@ class TelemetryDashboard:
         
         # Status atual
         status_frame = tk.Frame(main_frame, bg=self.colors["bg"])
-        status_frame.pack(fill=tk.X, pady=10)
+        status_frame.pack(fill=tk.X, pady=5)
         
         current_mode = "Manual" if self.sender_ip else "Automático"
         current_ip = self.sender_ip or "(broadcast)"
-        status_text = f"Atual: {current_mode} - {current_ip}"
+        status_text = f"Atual: {current_mode} - {current_ip}:{self.porta}"
         
         status_label = tk.Label(
             status_frame,
@@ -781,6 +807,16 @@ class TelemetryDashboard:
         def apply_config():
             mode = mode_var.get()
             ip = ip_entry.get().strip()
+            port_str = port_entry.get().strip()
+            
+            # Validar porta
+            try:
+                port = int(port_str)
+                if port < 1 or port > 65535:
+                    raise ValueError
+            except:
+                status_label.configure(text="❌ Porta inválida (1-65535)!", fg=self.colors["critical"])
+                return
             
             if mode == "manual":
                 # Validar IP
@@ -803,9 +839,11 @@ class TelemetryDashboard:
                 self.sender_ip = ""
                 self.connection_mode = "auto"
             
+            self.porta = port
+            
             # Salvar configuração
             config = {
-                "porta": PORTA,
+                "porta": self.porta,
                 "sender_ip": self.sender_ip,
                 "modo": self.connection_mode
             }
