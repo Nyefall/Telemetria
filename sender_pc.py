@@ -37,7 +37,10 @@ def run_as_admin():
         )
         sys.exit(0)
 
-if not is_admin():
+# Argumento --no-admin para desativar elevação (para debug)
+SKIP_ADMIN = "--no-admin" in sys.argv
+
+if not SKIP_ADMIN and not is_admin():
     print("=" * 50)
     print("ELEVANDO PRIVILÉGIOS PARA ADMINISTRADOR...")
     print("(Necessário para acessar sensores de hardware)")
