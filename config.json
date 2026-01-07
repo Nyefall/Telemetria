@@ -1,0 +1,12 @@
+{
+    "modo": "broadcast",
+    "dest_ip": "255.255.255.255",
+    "porta": 5005,
+    "intervalo": 0.5,
+    "comentarios": {
+        "modo": "Opções: 'broadcast' (auto-descoberta) ou 'unicast' (IP fixo)",
+        "dest_ip": "Use '255.255.255.255' para broadcast ou o IP do notebook para unicast",
+        "porta": "Porta UDP para comunicação (deve ser igual no sender e receiver)",
+        "intervalo": "Intervalo entre envios em segundos"
+    }
+}

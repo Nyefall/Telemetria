@@ -10,6 +10,7 @@ Tecla 'Q' ou ESC: Sair
 import socket
 import json
 import sys
+import os
 import tkinter as tk
 from tkinter import font as tkfont
 from collections import deque
@@ -17,8 +18,27 @@ import threading
 import time
 
 # ========== CONFIGURAÇÕES ==========
-HOST = "0.0.0.0"
-PORTA = 5005
+def carregar_config():
+    """Carrega configurações do config.json ou usa padrões."""
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+    
+    config_padrao = {
+        "porta": 5005
+    }
+    
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                print(f"[Config] Carregado de {config_path}")
+                return config.get("porta", 5005)
+        except Exception as e:
+            print(f"[Config] Erro ao ler config.json: {e}")
+    
+    return config_padrao["porta"]
+
+HOST = "0.0.0.0"  # Escuta em todas as interfaces (recebe broadcast)
+PORTA = carregar_config()
 HISTORY_SIZE = 60
 # ===================================
 
@@ -71,6 +91,16 @@ def receiver_thread():
             continue
         except Exception as e:
             print(f"[Receiver] Erro: {e}")
+
+
+# ========== DPI AWARENESS (Windows) ==========
+# Corrige renderização borrada em telas com escala > 100%
+try:
+    from ctypes import windll
+    windll.shcore.SetProcessDpiAwareness(1)
+except:
+    pass
+# =============================================
 
 
 class TelemetryDashboard:

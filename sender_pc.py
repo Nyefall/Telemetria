@@ -48,12 +48,68 @@ except ImportError:
     HAS_HWMON = False
 
 # ========== CONFIGURAÇÕES ==========
-DEST_IP = "192.168.10.137"  # IP do Notebook
-PORTA = 5005
-INTERVALO = 0.5  # Segundos entre envios
+def carregar_config():
+    """Carrega configurações do config.json ou usa padrões."""
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+    
+    config_padrao = {
+        "modo": "broadcast",
+        "dest_ip": "255.255.255.255",
+        "porta": 5005,
+        "intervalo": 0.5
+    }
+    
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                # Mescla com padrões para garantir que todas as chaves existam
+                for key in config_padrao:
+                    if key not in config:
+                        config[key] = config_padrao[key]
+                print(f"[Config] Carregado de {config_path}")
+                return config
+        except Exception as e:
+            print(f"[Config] Erro ao ler config.json: {e}")
+            print("[Config] Usando configurações padrão (broadcast)")
+    else:
+        # Cria config.json padrão
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "modo": "broadcast",
+                    "dest_ip": "255.255.255.255",
+                    "porta": 5005,
+                    "intervalo": 0.5,
+                    "comentarios": {
+                        "modo": "Opções: 'broadcast' (auto-descoberta) ou 'unicast' (IP fixo)",
+                        "dest_ip": "Use '255.255.255.255' para broadcast ou o IP do notebook para unicast",
+                        "porta": "Porta UDP para comunicação (deve ser igual no sender e receiver)",
+                        "intervalo": "Intervalo entre envios em segundos"
+                    }
+                }, f, indent=4, ensure_ascii=False)
+            print(f"[Config] Criado config.json padrão em {config_path}")
+        except:
+            pass
+    
+    return config_padrao
+
+CONFIG = carregar_config()
+DEST_IP = CONFIG["dest_ip"]
+PORTA = CONFIG["porta"]
+INTERVALO = CONFIG["intervalo"]
+MODO = CONFIG["modo"]
 # ===================================
 
+# Configura socket UDP
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+# Habilita broadcast se necessário
+if MODO == "broadcast" or DEST_IP == "255.255.255.255":
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    print("[Socket] Modo BROADCAST ativado - auto-descoberta na rede")
+else:
+    print(f"[Socket] Modo UNICAST - enviando para {DEST_IP}")
 
 # Inicializa Monitor de Hardware via DLL
 monitor = None
@@ -92,9 +148,22 @@ def medir_ping(host="8.8.8.8"):
 
 
 print(f"\n=== SENTINELA DE TELEMETRIA ===")
-print(f"Destino: {DEST_IP}:{PORTA}")
+if MODO == "broadcast":
+    print(f"Destino: BROADCAST (255.255.255.255:{PORTA})")
+else:
+    print(f"Destino: {DEST_IP}:{PORTA}")
 print(f"Intervalo: {INTERVALO}s")
 print("Ctrl+C para sair.\n")
+
+# Minimiza/esconde o console após inicialização bem-sucedida
+try:
+    import ctypes
+    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+    if hwnd:
+        ctypes.windll.user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE = 6
+        print("[Console] Minimizado para a barra de tarefas")
+except:
+    pass
 
 last_net = psutil.net_io_counters()
 last_t = time.time()
