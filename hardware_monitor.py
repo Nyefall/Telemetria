@@ -91,14 +91,11 @@ class HardwareMonitor:
                 "voltage": 0,
                 "clock_core": 0,
                 "clock_mem": 0,
-                "power": 0,
-                "fan": 0
+                "fan": 0,
+                "mem_used": 0
             },
             "mobo": {
-                "temp": 0,
-                "voltage_12v": 0,
-                "voltage_5v": 0,
-                "voltage_3v": 0
+                "temp": 0
             },
             "ram": {
                 "load": 0,
@@ -170,12 +167,13 @@ class HardwareMonitor:
                                 data["gpu"]["clock_core"] = val
                             elif "Memory" in name and val > 0:
                                 data["gpu"]["clock_mem"] = val
-                        elif s_type == "Power":
-                            if "Package" in name and val > 0:
-                                data["gpu"]["power"] = val
                         elif s_type == "Fan":
                             if val > 0:
                                 data["gpu"]["fan"] = val
+                        elif s_type == "SmallData":
+                            # Memória dedicada usada (em MB)
+                            if "Dedicated" in name and val > 0:
+                                data["gpu"]["mem_used"] = val
 
                 # === Motherboard ===
                 elif hw_type == "Motherboard":
@@ -190,22 +188,6 @@ class HardwareMonitor:
                             if s_type == "Temperature":
                                 if val > 0 and val < 150:  # Temp válida
                                     data["mobo"]["temp"] = max(data["mobo"]["temp"], val)
-                            elif s_type == "Voltage":
-                                name_lower = name.lower()
-                                # Verifica padrões de voltagem
-                                if "12v" in name_lower or "+12" in name_lower or "12 v" in name_lower:
-                                    if val > 0:
-                                        data["mobo"]["voltage_12v"] = val
-                                elif "5v" in name_lower or "+5" in name_lower or "5 v" in name_lower:
-                                    if val > 0 and "3" not in name_lower:  # Evita 3.5v confundir
-                                        data["mobo"]["voltage_5v"] = val
-                                elif "3.3v" in name_lower or "3v" in name_lower or "+3" in name_lower or "3.3 v" in name_lower:
-                                    if val > 0:
-                                        data["mobo"]["voltage_3v"] = val
-                                # Se não encontrar voltagens padrão, usa Vcore como fallback para voltagem geral
-                                elif "vcore" in name_lower and data["mobo"]["voltage_3v"] == 0:
-                                    # Não faz nada aqui, Vcore da CPU já é capturado
-                                    pass
                             elif s_type == "Fan":
                                 if val > 100:  # RPM válido (ignora leituras erradas)
                                     data["fans"].append({"name": name, "rpm": val})
@@ -228,8 +210,22 @@ class HardwareMonitor:
 
                 # === Storage (SSDs, HDDs) ===
                 elif hw_type == "Storage":
-                    disk_info = {"name": hardware.Name, "temp": 0, "health": 100}  # Default 100% se não tiver sensor
+                    disk_info = {
+                        "name": hardware.Name,
+                        "temp": 0,
+                        "health": 100,        # Default 100% se não tiver sensor
+                        "used_space": 0,      # % de espaço usado
+                        "read_activity": 0,   # % atividade de leitura
+                        "write_activity": 0,  # % atividade de escrita
+                        "total_activity": 0,  # % atividade total
+                        "read_rate": 0,       # Taxa de leitura (bytes/s)
+                        "write_rate": 0,      # Taxa de escrita (bytes/s)
+                        "data_read_gb": 0,    # Total de dados lidos (GB)
+                        "data_written_gb": 0  # Total de dados escritos (GB)
+                    }
                     has_health = False
+                    has_any_data = False
+                    
                     for sensor in hardware.Sensors:
                         s_type = self._get_sensor_type_name(sensor)
                         name = sensor.Name
@@ -237,19 +233,45 @@ class HardwareMonitor:
                         
                         if s_type == "Temperature" and val > 0:
                             disk_info["temp"] = max(disk_info["temp"], val)
+                            has_any_data = True
                         elif s_type == "Level":
                             # "Available Spare" indica saúde do SSD (100% = novo)
                             # "Percentage Used" indica desgaste (0% = novo, 100% = fim de vida)
                             if "Available Spare" in name and val > 0:
                                 disk_info["health"] = val
                                 has_health = True
+                                has_any_data = True
                             elif "Percentage Used" in name and not has_health:
                                 # Converte desgaste para saúde (100 - usado = saúde)
                                 disk_info["health"] = max(0, 100 - val)
                                 has_health = True
+                                has_any_data = True
+                        elif s_type == "Load":
+                            if "Used Space" in name:
+                                disk_info["used_space"] = val
+                                has_any_data = True
+                            elif "Read Activity" in name:
+                                disk_info["read_activity"] = val
+                            elif "Write Activity" in name:
+                                disk_info["write_activity"] = val
+                            elif "Total Activity" in name:
+                                disk_info["total_activity"] = val
+                        elif s_type == "Throughput":
+                            if "Read" in name and val > 0:
+                                disk_info["read_rate"] = val
+                            elif "Write" in name and val > 0:
+                                disk_info["write_rate"] = val
+                        elif s_type == "Data":
+                            # Dados em GB (LibreHardwareMonitor reporta em GB)
+                            if "Data Read" in name and val > 0:
+                                disk_info["data_read_gb"] = val
+                                has_any_data = True
+                            elif "Data Written" in name and val > 0:
+                                disk_info["data_written_gb"] = val
+                                has_any_data = True
                     
                     # Adiciona disco se tiver algum sensor válido
-                    if disk_info["temp"] > 0 or has_health:
+                    if has_any_data:
                         data["storage"].append(disk_info)
 
         except Exception as e:

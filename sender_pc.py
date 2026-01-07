@@ -130,14 +130,11 @@ try:
                     "voltage": round(hw["gpu"]["voltage"], 3),
                     "clock_core": round(hw["gpu"]["clock_core"], 0),
                     "clock_mem": round(hw["gpu"]["clock_mem"], 0),
-                    "power": round(hw["gpu"]["power"], 1),
-                    "fan": round(hw["gpu"]["fan"], 0)
+                    "fan": round(hw["gpu"]["fan"], 0),
+                    "mem_used_mb": round(hw["gpu"]["mem_used"], 0)
                 },
                 "mobo": {
-                    "temp": round(hw["mobo"]["temp"], 1),
-                    "voltage_12v": round(hw["mobo"]["voltage_12v"], 2),
-                    "voltage_5v": round(hw["mobo"]["voltage_5v"], 2),
-                    "voltage_3v": round(hw["mobo"]["voltage_3v"], 2)
+                    "temp": round(hw["mobo"]["temp"], 1)
                 },
                 "ram": {
                     "percent": mem.percent,
@@ -168,14 +165,11 @@ try:
                     "voltage": 0,
                     "clock_core": 0,
                     "clock_mem": 0,
-                    "power": 0,
-                    "fan": 0
+                    "fan": 0,
+                    "mem_used_mb": 0
                 },
                 "mobo": {
-                    "temp": 0,
-                    "voltage_12v": 0,
-                    "voltage_5v": 0,
-                    "voltage_3v": 0
+                    "temp": 0
                 },
                 "ram": {
                     "percent": mem.percent,
