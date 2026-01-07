@@ -938,7 +938,8 @@ class TelemetryDashboard:
         self.root.mainloop()
 
 
-if __name__ == "__main__":
+def main():
+    """Função principal do Receiver"""
     print("=" * 50)
     print("   CENTRAL DE TELEMETRIA - RECEIVER")
     print("=" * 50)
@@ -954,3 +955,7 @@ if __name__ == "__main__":
     
     app = TelemetryDashboard()
     app.run()
+
+
+if __name__ == "__main__":
+    main()

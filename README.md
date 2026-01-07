@@ -1,150 +1,227 @@
-# ⚡ Central de Telemetria (PC → Notebook)
+# 📡 Sistema de Telemetria de Hardware
 
-Sistema de monitoramento em tempo real que exibe métricas do seu PC Principal em um dashboard dedicado no Notebook, via rede local UDP.
+Sistema de monitoramento em tempo real de hardware (CPU, GPU, RAM, Storage) com comunicação UDP entre dispositivos Windows.
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
+## 🎯 Características
 
-## ✨ Funcionalidades
-
-### Monitoramento em Tempo Real
-- **CPU**: Uso, Temperatura, Voltagem, Consumo (W), Clock
-- **GPU**: Uso, Temperatura, Voltagem, Clock Core/Memory, VRAM, Fan RPM
-- **RAM**: Uso percentual, GB Usado/Total
-- **Storage**: Temperatura, Saúde, Espaço Usado (múltiplos discos)
-- **Motherboard**: Temperatura, Fans RPM
-- **Rede**: Upload/Download (KB/s), Ping
-
-### Interface
-- 🖥️ Dashboard responsivo com 6 painéis
-- 📊 Gráficos históricos (últimos 60 segundos)
-- 🌙 Tema escuro/claro (tecla `T`)
-- 🔔 Notificações Windows para alertas críticos
-- 📝 Log de histórico em CSV
-
-### Rede
-- 📡 **Broadcast UDP**: Auto-descoberta na rede (zero config!)
-- 🔒 **Unicast**: Modo IP fixo disponível
-- 📦 **Compactação**: Payload gzip para menor tráfego
-
-## 📋 Pré-requisitos
-
-- **Python 3.8+** em ambas as máquinas
-- **Windows 10/11** (usa APIs nativas)
-- **Rede local**: Ethernet ou Wi-Fi na mesma rede
-
-## 🚀 Instalação
-
-### 1. Clone o repositório
-```bash
-git clone https://github.com/Nyefall/Telemetria.git
-cd Telemetria
-```
-
-### 2. Crie um ambiente virtual (recomendado)
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-### 3. Instale as dependências
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Baixe a DLL do LibreHardwareMonitor
-Execute o script auxiliar ou baixe manualmente:
-```bash
-python download_deps.py
-```
-> Coloque `LibreHardwareMonitorLib.dll` na pasta `libs/`
-
-## ⚙️ Configuração
-
-O arquivo `config.json` é criado automaticamente na primeira execução:
-
-```json
-{
-    "modo": "broadcast",
-    "dest_ip": "255.255.255.255",
-    "porta": 5005,
-    "intervalo": 0.5
-}
-```
-
-| Parâmetro | Descrição |
-|-----------|-----------|
-| `modo` | `"broadcast"` (auto-descoberta) ou `"unicast"` (IP fixo) |
-| `dest_ip` | IP do notebook (ignorado em broadcast) |
-| `porta` | Porta UDP (deve ser igual em ambos) |
-| `intervalo` | Segundos entre atualizações |
-
-> 💡 **Modo Broadcast**: Não precisa configurar IPs! Sender e Receiver se encontram automaticamente na rede.
-
-## 🎮 Como Usar
-
-### No PC Principal (Sender)
-
-**Opção 1**: Clique duplo no `run_sender_admin.bat` (solicita admin)
-
-**Opção 2**: Execute via terminal como administrador:
-```bash
-python sender_pc.py
-```
-
-> ⚠️ **Importante**: Precisa rodar como administrador para acessar sensores de hardware.
-
-O sender minimiza automaticamente para a **bandeja do sistema** (System Tray).
-
-### No Notebook (Receiver)
-```bash
-python receiver_notebook.py
-```
-
-## ⌨️ Atalhos de Teclado (Receiver)
-
-| Tecla | Ação |
-|-------|------|
-| `F` ou `F11` | Alternar Fullscreen |
-| `G` | Mostrar/Ocultar Gráficos |
-| `T` | Alternar Tema (Escuro/Claro) |
-| `L` | Ativar/Desativar Log CSV |
-| `Q` ou `ESC` | Sair |
+- ✅ **Executável unificado** - Um único .exe com seleção de modo (Sender/Receiver)
+- ✅ Monitoramento em tempo real via LibreHardwareMonitor
+- ✅ Comunicação UDP (broadcast ou IP fixo)
+- ✅ Compressão gzip com magic byte protocol
+- ✅ Interface gráfica com temas claro/escuro
+- ✅ System Tray no sender
+- ✅ Log CSV de histórico
+- ✅ Notificações Windows
+- ✅ Standalone - não requer instalação de Python
 
 ## 📁 Estrutura do Projeto
 
 ```
 Telemetria/
-├── sender_pc.py           # Coleta e envia dados (PC)
-├── receiver_notebook.py   # Dashboard de exibição (Notebook)
-├── hardware_monitor.py    # Interface com LibreHardwareMonitor
-├── config.json           # Configurações de rede
-├── requirements.txt      # Dependências Python
-├── run_sender_admin.bat  # Launcher com elevação admin
-├── libs/
-│   └── LibreHardwareMonitorLib.dll
-└── logs/                 # Logs CSV (criado automaticamente)
+├── telemetria.py             # Launcher unificado (ponto de entrada)
+├── sender_pc.py              # Código do Sender
+├── receiver_notebook.py      # Código do Receiver
+├── hardware_monitor.py       # Interface LibreHardwareMonitor
+├── config.json               # Configuração do sender
+├── requirements.txt          # Dependências Python
+├── README.md                 # Este arquivo
+│
+├── libs/                     # DLLs do LibreHardwareMonitor
+├── logs/                     # Logs CSV (gerados)
+│
+├── scripts/                  # Scripts de build e execução
+│   ├── build_unified.py      # Build do executável
+│   └── RUN_TELEMETRIA.bat    # Launcher batch
+│
+├── tests/                    # Scripts de teste e debug
+│   ├── test_admin_sensors.py
+│   ├── test_connectivity.py
+│   └── ...
+│
+├── docs/                     # Documentação
+│   └── BUILD.md
+│
+└── dist/                     # Executável gerado
+    ├── Telemetria.exe        # Executável unificado (29 MB)
+    ├── config.json           # Config do Sender
+    └── libs/                 # DLLs necessárias
 ```
 
-## 🔧 Solução de Problemas
+## 🚀 Início Rápido
 
-### "Aguardando dados..." no Receiver
-1. Verifique se o Sender está rodando
-2. Confira se ambos estão na mesma rede
-3. Libere a porta UDP 5005 no Firewall do Windows
+### Usando o Executável Unificado (.exe)
 
-### Temperaturas zeradas
-- Execute o Sender como **Administrador**
-- Verifique se a DLL está em `libs/`
+1. **Execute `Telemetria.exe`**
+2. **Selecione o modo:**
+   - 💻 **SENDER** - Para o PC que será monitorado (requer Admin)
+   - 📊 **RECEIVER** - Para o dispositivo que exibirá o dashboard
 
-### Interface borrada no notebook
-- O DPI Awareness já está habilitado, mas se persistir, ajuste a escala do Windows
+**No PC (Sender):**
+- Clique em "SENDER (PC Principal)"
+- Aceite a solicitação de privilégios de Administrador
+- O programa ficará na bandeja do sistema
 
-## 📜 Licença
+**No Notebook (Receiver):**
+- Clique em "RECEIVER (Dashboard)"
+- Pressione `I` para configurar o IP do PC (se necessário)
 
-MIT License - Veja [LICENSE](LICENSE) para detalhes.
+### Usando Python (Desenvolvimento)
+
+**Instalação:**
+```bash
+git clone https://github.com/Nyefall/Telemetria.git
+cd Telemetria
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**Executar:**
+```bash
+# Launcher unificado
+python telemetria.py
+
+# Ou diretamente
+python sender_pc.py      # Sender
+python receiver_notebook.py  # Receiver
+```
+
+## ⚙️ Configuração
+
+### Sender (PC)
+Edite `config.json`:
+```json
+{
+    "modo": "broadcast",
+    "dest_ip": "255.255.255.255",
+    "porta": 5005,
+    "intervalo": 0.5,
+    "bind_ip": "192.168.10.101"
+}
+```
+
+- `bind_ip`: IP da interface local para enviar (força Ethernet vs VPN)
+- `modo`: "broadcast" (auto) ou "unicast" (IP fixo)
+
+### Receiver (Notebook)
+Pressione `I` na interface para configurar:
+- Modo: Automático (broadcast) ou Manual (IP fixo)
+- IP do Sender
+- Porta UDP
+
+## ⌨️ Atalhos do Receiver
+
+| Tecla | Função |
+|-------|--------|
+| `F` / `F11` | Fullscreen |
+| `G` | Mostrar/ocultar gráficos |
+| `T` | Alternar tema (escuro/claro) |
+| `L` | Ativar/desativar log CSV |
+| `I` | Configurar IP/Porta |
+| `Q` / `ESC` | Sair |
+
+## 🔧 Build do Executável
+
+**Instalar PyInstaller:**
+```bash
+pip install pyinstaller
+```
+
+**Build do executável unificado:**
+```bash
+python scripts/build_unified.py
+```
+
+Gera um único `Telemetria.exe` (~29 MB) com seleção de modo Sender/Receiver.
+
+Os executáveis ficam em `dist/`
+
+## 🧪 Testes
+
+```bash
+# Teste de sensores (requer admin)
+scripts\run_test_admin.bat
+
+# Teste de conectividade
+python tests/test_connectivity.py
+
+# Teste de recepção rápida
+python tests/test_receiver_quick.py
+```
+
+## 📊 Sensores Monitorados
+
+### CPU
+- Uso (%)
+- Temperatura (°C)
+- Voltagem (V)
+- Clock (MHz)
+- Potência (W)
+
+### GPU
+- Carga (%)
+- Temperatura (°C)
+- Clock Core/Memory (MHz)
+- VRAM Usada (MB)
+- Velocidade do Fan (RPM)
+
+### RAM
+- Uso (%)
+- Usada/Total (GB)
+
+### Storage
+- Temperatura (°C)
+- Saúde (%)
+- Atividade de leitura/escrita (%)
+- Throughput (KB/s)
+
+### Rede
+- Download/Upload (KB/s)
+- Ping (ms)
+
+## 🛠️ Tecnologias
+
+- **Python 3.8+**
+- **LibreHardwareMonitor** (sensores de hardware)
+- **pythonnet** (interface .NET)
+- **psutil** (métricas de sistema)
+- **tkinter** (interface gráfica)
+- **pystray** (system tray)
+- **win10toast** (notificações Windows)
+- **gzip** (compressão de dados)
+
+## 📝 Protocolo de Comunicação
+
+**Magic Byte:**
+- `0x01` + dados → Payload comprimido com gzip
+- `0x00` + dados → Payload JSON raw
+
+**Payload JSON:**
+```json
+{
+  "cpu": {"usage": 45.2, "temp": 62.0, ...},
+  "gpu": {"load": 30.0, "temp": 55.0, ...},
+  "ram": {"percent": 72.5, ...},
+  "storage": [...],
+  "network": {"ping_ms": 12.0, ...}
+}
+```
+
+## ⚠️ Requisitos
+
+- **Windows** (LibreHardwareMonitor é Windows-only)
+- **Privilégios de Administrador** no sender (para sensores de hardware)
+- **Mesma rede local** (ou configurar IP manual)
+- **Porta UDP 5005** liberada no firewall
+
+## 📄 Licença
+
+MIT License
+
+## 👤 Autor
+
+Desenvolvido por [@Nyefall](https://github.com/Nyefall)
 
 ---
 
-Desenvolvido com ☕ e Python
+**Dica:** Para debug, use os scripts em `tests/` para verificar sensores, conectividade e recepção de pacotes.

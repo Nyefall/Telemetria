@@ -33,5 +33,23 @@ venv/
 *.log
 logs/
 
-# Windows thumbnail database
+# Config local (não versionado)
+receiver_config.json
+
+# PyInstaller
+*.spec
+build/
+dist/
+
+# Outputs de teste
+test_output.txt
+sensors_output.txt
+
+# Backups
+*.old
+*.old.*
+README.old.md
+
+# Windows
 Thumbs.db
+*.tmp

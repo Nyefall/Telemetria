@@ -387,6 +387,11 @@ class TelemetrySender:
                 self._quit()
 
 
-if __name__ == "__main__":
+def main():
+    """Função principal do Sender"""
     sender = TelemetrySender()
     sender.run()
+
+
+if __name__ == "__main__":
+    main()
