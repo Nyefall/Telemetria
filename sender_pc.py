@@ -75,7 +75,8 @@ def carregar_config():
         "modo": "broadcast",
         "dest_ip": "255.255.255.255",
         "porta": 5005,
-        "intervalo": 0.5
+        "intervalo": 0.5,
+        "bind_ip": ""  # IP local para enviar (vazio = auto)
     }
     
     if os.path.exists(config_path):
@@ -112,6 +113,7 @@ DEST_IP = CONFIG["dest_ip"]
 PORTA = CONFIG["porta"]
 INTERVALO = CONFIG["intervalo"]
 MODO = CONFIG["modo"]
+BIND_IP = CONFIG.get("bind_ip", "")  # IP local para bind
 # ==========================================
 
 
@@ -146,6 +148,16 @@ class TelemetrySender:
             print("[Socket] Modo BROADCAST ativado")
         else:
             print(f"[Socket] Modo UNICAST - {DEST_IP}")
+        
+        # Bind a uma interface específica se configurado
+        if BIND_IP:
+            try:
+                self.sock.bind((BIND_IP, 0))
+                print(f"[Socket] Bind na interface: {BIND_IP}")
+            except Exception as e:
+                print(f"[Socket] Erro ao bind em {BIND_IP}: {e}")
+        else:
+            print("[Socket] Usando interface padrão")
     
     def _init_hardware_monitor(self):
         """Inicializa LibreHardwareMonitor."""
