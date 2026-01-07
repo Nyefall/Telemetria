@@ -9,6 +9,9 @@ import json
 import socket
 import time
 
+# Adicionar diretório pai ao path para imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 def is_admin():
     """Verifica se está rodando como administrador."""
     try:
@@ -100,8 +103,8 @@ def test_udp_broadcast():
     print("="*60)
     
     try:
-        # Carregar config
-        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        # Carregar config (na pasta pai)
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
         with open(config_path, 'r') as f:
             config = json.load(f)
         
