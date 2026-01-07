@@ -2,6 +2,43 @@ import psutil
 import socket
 import time
 import json
+import sys
+import os
+import ctypes
+
+# ========== AUTO-ELEVAÇÃO PARA ADMINISTRADOR ==========
+def is_admin():
+    """Verifica se o script está rodando como administrador."""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+def run_as_admin():
+    """Reinicia o script com privilégios de administrador."""
+    if sys.platform == 'win32':
+        script = os.path.abspath(sys.argv[0])
+        params = ' '.join([f'"{arg}"' for arg in sys.argv[1:]])
+        
+        # Usa ShellExecuteW para solicitar elevação
+        ctypes.windll.shell32.ShellExecuteW(
+            None,           # hwnd
+            "runas",        # operação (runas = executar como admin)
+            sys.executable, # programa (python.exe)
+            f'"{script}" {params}',  # parâmetros
+            None,           # diretório
+            1               # SW_SHOWNORMAL
+        )
+        sys.exit(0)
+
+# Verifica e eleva privilégios se necessário
+if not is_admin():
+    print("=" * 50)
+    print("ELEVANDO PRIVILÉGIOS PARA ADMINISTRADOR...")
+    print("(Necessário para acessar sensores de hardware)")
+    print("=" * 50)
+    run_as_admin()
+# ======================================================
 
 # Tenta carregar módulo de Hardware Monitor (DLL)
 try:
