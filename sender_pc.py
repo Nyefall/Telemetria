@@ -335,11 +335,12 @@ class TelemetrySender:
                     data = json.dumps(payload).encode()
                     compressed = gzip.compress(data)
                     
-                    # Envia (usa compactado se menor)
+                    # Magic byte: 0x01 = gzip, 0x00 = raw JSON
+                    # Envia com prefixo indicando tipo de encoding
                     if len(compressed) < len(data):
-                        self.sock.sendto(compressed, (DEST_IP, PORTA))
+                        self.sock.sendto(b'\x01' + compressed, (DEST_IP, PORTA))
                     else:
-                        self.sock.sendto(data, (DEST_IP, PORTA))
+                        self.sock.sendto(b'\x00' + data, (DEST_IP, PORTA))
                     
                 except Exception as e:
                     print(f"[Erro] {e}")

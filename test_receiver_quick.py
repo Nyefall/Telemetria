@@ -26,12 +26,19 @@ try:
         try:
             data, addr = sock.recvfrom(65535)
             
-            # Tentar descomprimir
-            try:
-                decompressed = gzip.decompress(data)
-                payload = json.loads(decompressed.decode('utf-8'))
-            except:
-                payload = json.loads(data.decode('utf-8'))
+            # Magic byte: 0x01 = gzip, 0x00 = raw JSON
+            if len(data) > 0:
+                magic = data[0]
+                if magic == 0x01:  # GZIP
+                    payload = json.loads(gzip.decompress(data[1:]).decode('utf-8'))
+                elif magic == 0x00:  # Raw JSON
+                    payload = json.loads(data[1:].decode('utf-8'))
+                else:
+                    # Retrocompatibilidade
+                    try:
+                        payload = json.loads(gzip.decompress(data).decode('utf-8'))
+                    except:
+                        payload = json.loads(data.decode('utf-8'))
             
             count += 1
             cpu = payload.get('cpu', {})

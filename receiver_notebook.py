@@ -335,11 +335,20 @@ class TelemetryDashboard:
                         if self.sender_ip and addr[0] != self.sender_ip:
                             continue
                         
-                        # Tenta descompactar gzip, senão usa raw
-                        try:
-                            data = gzip.decompress(data)
-                        except:
-                            pass
+                        # Magic byte: 0x01 = gzip, 0x00 = raw JSON
+                        # Retrocompatível: se não começar com 0x00 ou 0x01, tenta gzip
+                        if len(data) > 0:
+                            magic = data[0]
+                            if magic == 0x01:  # GZIP
+                                data = gzip.decompress(data[1:])
+                            elif magic == 0x00:  # Raw JSON
+                                data = data[1:]
+                            else:
+                                # Retrocompatibilidade: sem magic byte
+                                try:
+                                    data = gzip.decompress(data)
+                                except:
+                                    pass
                         
                         payload = json.loads(data.decode())
                         
