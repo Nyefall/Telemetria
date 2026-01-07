@@ -8,6 +8,7 @@ Atalhos:
     F/F11: Fullscreen
     T: Alternar tema (escuro/claro)
     L: Ativar/desativar log CSV
+    I: Configurar IP do Sender (conexão manual)
     Q/ESC: Sair
 """
 
@@ -40,23 +41,51 @@ except ImportError:
 
 
 # ========== CONFIGURAÇÕES ==========
-def carregar_config():
-    """Carrega configurações do config.json ou usa padrões."""
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
-    
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-                print(f"[Config] Carregado de {config_path}")
-                return config.get("porta", 5005)
-        except Exception as e:
-            print(f"[Config] Erro ao ler config.json: {e}")
-    
-    return 5005
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_config.json")
 
+def carregar_config():
+    """Carrega configurações do receiver_config.json ou usa padrões."""
+    config_padrao = {
+        "porta": 5005,
+        "sender_ip": "",  # Vazio = broadcast/auto
+        "modo": "auto"     # "auto" ou "manual"
+    }
+    
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                print(f"[Config] Carregado de {CONFIG_PATH}")
+                return {**config_padrao, **config}
+        except Exception as e:
+            print(f"[Config] Erro ao ler: {e}")
+    
+    # Tenta ler porta do config.json antigo
+    old_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+    if os.path.exists(old_config):
+        try:
+            with open(old_config, 'r', encoding='utf-8') as f:
+                old = json.load(f)
+                config_padrao["porta"] = old.get("porta", 5005)
+        except:
+            pass
+    
+    return config_padrao
+
+def salvar_config(config):
+    """Salva configurações do receiver."""
+    try:
+        with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+        print(f"[Config] Salvo em {CONFIG_PATH}")
+        return True
+    except Exception as e:
+        print(f"[Config] Erro ao salvar: {e}")
+        return False
+
+CONFIG = carregar_config()
 HOST = "0.0.0.0"
-PORTA = carregar_config()
+PORTA = CONFIG["porta"]
 HISTORY_SIZE = 60
 CONNECTION_TIMEOUT = 5  # segundos sem dados = desconectado
 # ===================================
@@ -79,6 +108,11 @@ class TelemetryDashboard:
         self.last_data_time = 0
         self.is_connected = False
         self.notified_critical = {}  # Evita spam de notificações
+        
+        # Configuração de conexão
+        self.sender_ip = CONFIG.get("sender_ip", "")
+        self.connection_mode = CONFIG.get("modo", "auto")
+        self.restart_receiver = False  # Flag para reiniciar receiver
         
         # Dados (encapsulados na classe)
         self.current_data = {}
@@ -222,7 +256,7 @@ class TelemetryDashboard:
         # Help bar
         self.help_label = tk.Label(
             self.main_frame,
-            text="[F] Fullscreen | [G] Gráficos | [T] Tema | [L] Log | [Q] Sair",
+            text="[F] Fullscreen | [G] Gráficos | [T] Tema | [L] Log | [I] Config IP | [Q] Sair",
             font=self.font_help,
             fg=self.colors["dim"],
             bg=self.colors["bg"]
@@ -272,48 +306,67 @@ class TelemetryDashboard:
         self.root.bind('<t>', self._toggle_theme)
         self.root.bind('<L>', self._toggle_logging)
         self.root.bind('<l>', self._toggle_logging)
+        self.root.bind('<I>', self._show_ip_config)
+        self.root.bind('<i>', self._show_ip_config)
         self.root.bind('<q>', self._quit_app)
         self.root.bind('<Q>', self._quit_app)
         self.root.bind('<Escape>', self._quit_app)
     
     def _receiver_loop(self):
         """Thread que recebe dados UDP."""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((HOST, PORTA))
-        sock.settimeout(1.0)
-        
-        print(f"[Receiver] Ouvindo em {HOST}:{PORTA}...")
-        
         while True:
             try:
-                data, addr = sock.recvfrom(16384)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.bind((HOST, PORTA))
+                sock.settimeout(1.0)
                 
-                # Tenta descompactar gzip, senão usa raw
-                try:
-                    data = gzip.decompress(data)
-                except:
-                    pass
+                mode_str = f"Manual ({self.sender_ip})" if self.sender_ip else "Auto (broadcast)"
+                print(f"[Receiver] Ouvindo em {HOST}:{PORTA} - Modo: {mode_str}")
                 
-                payload = json.loads(data.decode())
+                self.restart_receiver = False
                 
-                with self.data_lock:
-                    self.current_data = payload
-                    self.last_data_time = time.time()
-                    
-                    # Atualiza históricos
-                    self.history["cpu_usage"].append(payload.get("cpu", {}).get("usage", 0))
-                    self.history["cpu_temp"].append(payload.get("cpu", {}).get("temp", 0))
-                    self.history["gpu_load"].append(payload.get("gpu", {}).get("load", 0))
-                    self.history["gpu_temp"].append(payload.get("gpu", {}).get("temp", 0))
-                    self.history["ram"].append(payload.get("ram", {}).get("percent", 0))
-                    self.history["net_down"].append(payload.get("network", {}).get("down_kbps", 0))
-                    self.history["net_up"].append(payload.get("network", {}).get("up_kbps", 0))
-                    self.history["ping"].append(payload.get("network", {}).get("ping_ms", 0))
-                    
-            except socket.timeout:
-                continue
+                while not self.restart_receiver:
+                    try:
+                        data, addr = sock.recvfrom(16384)
+                        
+                        # Se modo manual, filtra por IP
+                        if self.sender_ip and addr[0] != self.sender_ip:
+                            continue
+                        
+                        # Tenta descompactar gzip, senão usa raw
+                        try:
+                            data = gzip.decompress(data)
+                        except:
+                            pass
+                        
+                        payload = json.loads(data.decode())
+                        
+                        with self.data_lock:
+                            self.current_data = payload
+                            self.last_data_time = time.time()
+                            
+                            # Atualiza históricos
+                            self.history["cpu_usage"].append(payload.get("cpu", {}).get("usage", 0))
+                            self.history["cpu_temp"].append(payload.get("cpu", {}).get("temp", 0))
+                            self.history["gpu_load"].append(payload.get("gpu", {}).get("load", 0))
+                            self.history["gpu_temp"].append(payload.get("gpu", {}).get("temp", 0))
+                            self.history["ram"].append(payload.get("ram", {}).get("percent", 0))
+                            self.history["net_down"].append(payload.get("network", {}).get("down_kbps", 0))
+                            self.history["net_up"].append(payload.get("network", {}).get("up_kbps", 0))
+                            self.history["ping"].append(payload.get("network", {}).get("ping_ms", 0))
+                            
+                    except socket.timeout:
+                        continue
+                    except Exception as e:
+                        print(f"[Receiver] Erro: {e}")
+                
+                sock.close()
+                print("[Receiver] Reiniciando com novas configurações...")
+                
             except Exception as e:
-                print(f"[Receiver] Erro: {e}")
+                print(f"[Receiver] Erro ao criar socket: {e}")
+                time.sleep(2)
     
     def _update_value(self, panel, key, label, value, unit="", warn_threshold=None, crit_threshold=None):
         """Atualiza ou cria um valor em um painel."""
@@ -422,8 +475,9 @@ class TelemetryDashboard:
             if self.is_connected:
                 self.is_connected = False
             
+            mode_text = f" (IP: {self.sender_ip})" if self.sender_ip else " (broadcast)"
             self.status_label.config(
-                text="○ Desconectado - Aguardando dados...",
+                text=f"○ Desconectado - Aguardando dados...{mode_text} | [I] Config",
                 fg=self.colors["critical"]
             )
         
@@ -595,6 +649,214 @@ class TelemetryDashboard:
             except:
                 pass
     
+    def _show_ip_config(self, event=None):
+        """Mostra janela de configuração de IP do sender."""
+        config_window = tk.Toplevel(self.root)
+        config_window.title("Configuração de Conexão")
+        config_window.geometry("400x300")
+        config_window.resizable(False, False)
+        config_window.configure(bg=self.colors["bg"])
+        config_window.transient(self.root)
+        config_window.grab_set()
+        
+        # Centralizar na tela
+        config_window.update_idletasks()
+        x = (config_window.winfo_screenwidth() // 2) - 200
+        y = (config_window.winfo_screenheight() // 2) - 150
+        config_window.geometry(f"+{x}+{y}")
+        
+        # Título
+        title = tk.Label(
+            config_window,
+            text="🔧 Configuração de Conexão",
+            font=self.font_section,
+            fg=self.colors["title"],
+            bg=self.colors["bg"]
+        )
+        title.pack(pady=15)
+        
+        # Frame principal
+        main_frame = tk.Frame(config_window, bg=self.colors["bg"])
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20)
+        
+        # Modo de conexão
+        mode_frame = tk.Frame(main_frame, bg=self.colors["bg"])
+        mode_frame.pack(fill=tk.X, pady=10)
+        
+        mode_label = tk.Label(
+            mode_frame,
+            text="Modo de Conexão:",
+            font=self.font_small,
+            fg=self.colors["text"],
+            bg=self.colors["bg"]
+        )
+        mode_label.pack(anchor="w")
+        
+        mode_var = tk.StringVar(value="manual" if self.sender_ip else "auto")
+        
+        auto_radio = tk.Radiobutton(
+            mode_frame,
+            text="Automático (Broadcast UDP)",
+            variable=mode_var,
+            value="auto",
+            font=self.font_small,
+            fg=self.colors["text"],
+            bg=self.colors["bg"],
+            selectcolor=self.colors["panel"],
+            activebackground=self.colors["bg"],
+            activeforeground=self.colors["text"]
+        )
+        auto_radio.pack(anchor="w", padx=10)
+        
+        manual_radio = tk.Radiobutton(
+            mode_frame,
+            text="Manual (Inserir IP)",
+            variable=mode_var,
+            value="manual",
+            font=self.font_small,
+            fg=self.colors["text"],
+            bg=self.colors["bg"],
+            selectcolor=self.colors["panel"],
+            activebackground=self.colors["bg"],
+            activeforeground=self.colors["text"]
+        )
+        manual_radio.pack(anchor="w", padx=10)
+        
+        # IP do Sender
+        ip_frame = tk.Frame(main_frame, bg=self.colors["bg"])
+        ip_frame.pack(fill=tk.X, pady=10)
+        
+        ip_label = tk.Label(
+            ip_frame,
+            text="IP do Sender (PC):",
+            font=self.font_small,
+            fg=self.colors["text"],
+            bg=self.colors["bg"]
+        )
+        ip_label.pack(anchor="w")
+        
+        ip_entry = tk.Entry(
+            ip_frame,
+            font=self.font_value,
+            bg=self.colors["panel"],
+            fg=self.colors["text"],
+            insertbackground=self.colors["text"],
+            relief="flat",
+            width=20
+        )
+        ip_entry.pack(fill=tk.X, pady=5, ipady=5)
+        ip_entry.insert(0, self.sender_ip or "192.168.1.100")
+        
+        # Dica
+        tip_label = tk.Label(
+            ip_frame,
+            text="Dica: No PC, execute 'ipconfig' para ver o IP local",
+            font=self.font_help,
+            fg=self.colors["dim"],
+            bg=self.colors["bg"]
+        )
+        tip_label.pack(anchor="w")
+        
+        # Status atual
+        status_frame = tk.Frame(main_frame, bg=self.colors["bg"])
+        status_frame.pack(fill=tk.X, pady=10)
+        
+        current_mode = "Manual" if self.sender_ip else "Automático"
+        current_ip = self.sender_ip or "(broadcast)"
+        status_text = f"Atual: {current_mode} - {current_ip}"
+        
+        status_label = tk.Label(
+            status_frame,
+            text=status_text,
+            font=self.font_small,
+            fg=self.colors["dim"],
+            bg=self.colors["bg"]
+        )
+        status_label.pack(anchor="w")
+        
+        # Botões
+        btn_frame = tk.Frame(config_window, bg=self.colors["bg"])
+        btn_frame.pack(fill=tk.X, padx=20, pady=15)
+        
+        def apply_config():
+            mode = mode_var.get()
+            ip = ip_entry.get().strip()
+            
+            if mode == "manual":
+                # Validar IP
+                parts = ip.split(".")
+                if len(parts) != 4:
+                    status_label.configure(text="❌ IP inválido!", fg=self.colors["critical"])
+                    return
+                try:
+                    for part in parts:
+                        n = int(part)
+                        if n < 0 or n > 255:
+                            raise ValueError
+                except:
+                    status_label.configure(text="❌ IP inválido!", fg=self.colors["critical"])
+                    return
+                
+                self.sender_ip = ip
+                self.connection_mode = "manual"
+            else:
+                self.sender_ip = ""
+                self.connection_mode = "auto"
+            
+            # Salvar configuração
+            config = {
+                "porta": PORTA,
+                "sender_ip": self.sender_ip,
+                "modo": self.connection_mode
+            }
+            salvar_config(config)
+            
+            # Sinalizar para reiniciar o receiver
+            self.restart_receiver = True
+            
+            status_label.configure(
+                text=f"✓ Configuração aplicada! Reconectando...", 
+                fg=self.colors["gpu"]
+            )
+            config_window.after(1000, config_window.destroy)
+        
+        def cancel():
+            config_window.destroy()
+        
+        cancel_btn = tk.Button(
+            btn_frame,
+            text="Cancelar",
+            font=self.font_small,
+            bg=self.colors["panel"],
+            fg=self.colors["text"],
+            relief="flat",
+            padx=15,
+            pady=5,
+            command=cancel
+        )
+        cancel_btn.pack(side=tk.LEFT)
+        
+        apply_btn = tk.Button(
+            btn_frame,
+            text="Aplicar",
+            font=self.font_small,
+            bg=self.colors["cpu"],
+            fg="#000000",
+            relief="flat",
+            padx=15,
+            pady=5,
+            command=apply_config
+        )
+        apply_btn.pack(side=tk.RIGHT)
+        
+        # Bind Enter para aplicar
+        config_window.bind('<Return>', lambda e: apply_config())
+        config_window.bind('<Escape>', lambda e: cancel())
+        
+        # Foco no campo de IP
+        ip_entry.focus_set()
+        ip_entry.select_range(0, tk.END)
+    
     def _toggle_logging(self, event=None):
         """Ativa/desativa log CSV."""
         self.logging_enabled = not self.logging_enabled
@@ -634,7 +896,12 @@ if __name__ == "__main__":
     print("   CENTRAL DE TELEMETRIA - RECEIVER")
     print("=" * 50)
     print(f"Porta UDP: {PORTA}")
-    print("Atalhos: [F]ullscreen [G]ráficos [T]ema [L]og [Q]uit")
+    sender_ip = CONFIG.get("sender_ip", "")
+    if sender_ip:
+        print(f"Modo: Manual - IP do Sender: {sender_ip}")
+    else:
+        print("Modo: Automático (broadcast UDP)")
+    print("Atalhos: [F]ullscreen [G]ráficos [T]ema [L]og [I]P Config [Q]uit")
     print("=" * 50)
     print()
     
