@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 
 # Tenta importar pythonnet (clr)
 try:
@@ -50,7 +51,7 @@ class HardwareMonitor:
             print("[HardwareMonitor] Inicializado com sucesso!")
             
         except Exception as e:
-            print(f"[HardwareMonitor] Erro ao inicializar (Admin?): {e}")
+            print(f"[HardwareMonitor] Erro ao inicializar (Rode como Admin!): {e}")
             self.computer = None
 
     def _get_sensor_type_name(self, sensor):
@@ -60,6 +61,17 @@ class HardwareMonitor:
     def _get_hardware_type_name(self, hardware):
         """Retorna o nome do tipo de hardware como string."""
         return str(hardware.HardwareType).split('.')[-1]
+    
+    def _safe_value(self, val):
+        """Retorna 0 se valor for None, NaN ou inválido."""
+        if val is None:
+            return 0
+        try:
+            if math.isnan(val) or math.isinf(val):
+                return 0
+            return float(val)
+        except:
+            return 0
 
     def fetch_data(self):
         """
@@ -89,12 +101,12 @@ class HardwareMonitor:
                 "voltage_3v": 0
             },
             "ram": {
-                "load": 0,  # % usado (redundante com psutil mas vem da DLL)
+                "load": 0,
                 "used_gb": 0,
                 "available_gb": 0
             },
-            "storage": [],  # Lista de discos com temp e uso
-            "fans": []      # Lista de ventoinhas
+            "storage": [],
+            "fans": []
         }
 
         if not self.enabled or not self.computer:
@@ -105,7 +117,7 @@ class HardwareMonitor:
                 hardware.Update()
                 hw_type = self._get_hardware_type_name(hardware)
                 
-                # Também atualiza sub-hardwares (chipsets, super I/O, etc)
+                # Atualiza sub-hardwares
                 for subhw in hardware.SubHardware:
                     subhw.Update()
 
@@ -114,22 +126,25 @@ class HardwareMonitor:
                     for sensor in hardware.Sensors:
                         s_type = self._get_sensor_type_name(sensor)
                         name = sensor.Name
-                        val = sensor.Value or 0
+                        val = self._safe_value(sensor.Value)
                         
                         if s_type == "Temperature":
-                            if "Package" in name or "Core" in name:
+                            # AMD: Tctl/Tdie, Intel: Package/Core
+                            if val > 0:
                                 data["cpu"]["temp"] = max(data["cpu"]["temp"], val)
                         elif s_type == "Voltage":
-                            if "Core" in name or "VCore" in name or "Vcore" in name:
+                            # AMD: SVI2 TFN, VID | Intel: VCore
+                            # Filtra voltagens válidas (< 2V tipicamente)
+                            if val > 0 and val < 2:
                                 data["cpu"]["voltage"] = max(data["cpu"]["voltage"], val)
                         elif s_type == "Load":
-                            if "Total" in name:
+                            if "Total" in name and val > 0:
                                 data["cpu"]["load"] = val
                         elif s_type == "Power":
-                            if "Package" in name:
-                                data["cpu"]["power"] = val
+                            if val > 0:
+                                data["cpu"]["power"] = max(data["cpu"]["power"], val)
                         elif s_type == "Clock":
-                            if "Core" in name:
+                            if val > 0:
                                 data["cpu"]["clock"] = max(data["cpu"]["clock"], val)
 
                 # === GPU (Nvidia, AMD, Intel) ===
@@ -137,47 +152,62 @@ class HardwareMonitor:
                     for sensor in hardware.Sensors:
                         s_type = self._get_sensor_type_name(sensor)
                         name = sensor.Name
-                        val = sensor.Value or 0
+                        val = self._safe_value(sensor.Value)
                         
                         if s_type == "Temperature":
-                            if "Core" in name or "GPU" in name:
-                                data["gpu"]["temp"] = max(data["gpu"]["temp"], val)
+                            # GPU Core (não Hot Spot ou Memory para principal)
+                            if "Core" in name and val > 0:
+                                data["gpu"]["temp"] = val
                         elif s_type == "Load":
-                            if "Core" in name or "GPU" in name:
-                                data["gpu"]["load"] = max(data["gpu"]["load"], val)
+                            # GPU Core load (não D3D)
+                            if "Core" in name and "D3D" not in name and val > 0:
+                                data["gpu"]["load"] = val
                         elif s_type == "Voltage":
-                            data["gpu"]["voltage"] = max(data["gpu"]["voltage"], val)
+                            if "Core" in name and val > 0:
+                                data["gpu"]["voltage"] = val
                         elif s_type == "Clock":
-                            if "Core" in name:
+                            if "Core" in name and val > 0:
                                 data["gpu"]["clock_core"] = val
-                            elif "Memory" in name:
+                            elif "Memory" in name and val > 0:
                                 data["gpu"]["clock_mem"] = val
                         elif s_type == "Power":
-                            data["gpu"]["power"] = max(data["gpu"]["power"], val)
+                            if "Package" in name and val > 0:
+                                data["gpu"]["power"] = val
                         elif s_type == "Fan":
-                            data["gpu"]["fan"] = val
+                            if val > 0:
+                                data["gpu"]["fan"] = val
 
                 # === Motherboard ===
                 elif hw_type == "Motherboard":
+                    # Sensores da motherboard geralmente estão em sub-hardware (SuperIO)
                     for subhw in hardware.SubHardware:
                         subhw.Update()
                         for sensor in subhw.Sensors:
                             s_type = self._get_sensor_type_name(sensor)
                             name = sensor.Name
-                            val = sensor.Value or 0
+                            val = self._safe_value(sensor.Value)
                             
                             if s_type == "Temperature":
-                                # Pega a maior temp da mobo
-                                data["mobo"]["temp"] = max(data["mobo"]["temp"], val)
+                                if val > 0 and val < 150:  # Temp válida
+                                    data["mobo"]["temp"] = max(data["mobo"]["temp"], val)
                             elif s_type == "Voltage":
-                                if "+12V" in name or "12V" in name:
-                                    data["mobo"]["voltage_12v"] = val
-                                elif "+5V" in name or "5V" in name:
-                                    data["mobo"]["voltage_5v"] = val
-                                elif "+3.3V" in name or "3V" in name or "3.3V" in name:
-                                    data["mobo"]["voltage_3v"] = val
+                                name_lower = name.lower()
+                                # Verifica padrões de voltagem
+                                if "12v" in name_lower or "+12" in name_lower or "12 v" in name_lower:
+                                    if val > 0:
+                                        data["mobo"]["voltage_12v"] = val
+                                elif "5v" in name_lower or "+5" in name_lower or "5 v" in name_lower:
+                                    if val > 0 and "3" not in name_lower:  # Evita 3.5v confundir
+                                        data["mobo"]["voltage_5v"] = val
+                                elif "3.3v" in name_lower or "3v" in name_lower or "+3" in name_lower or "3.3 v" in name_lower:
+                                    if val > 0:
+                                        data["mobo"]["voltage_3v"] = val
+                                # Se não encontrar voltagens padrão, usa Vcore como fallback para voltagem geral
+                                elif "vcore" in name_lower and data["mobo"]["voltage_3v"] == 0:
+                                    # Não faz nada aqui, Vcore da CPU já é capturado
+                                    pass
                             elif s_type == "Fan":
-                                if val > 0:
+                                if val > 100:  # RPM válido (ignora leituras erradas)
                                     data["fans"].append({"name": name, "rpm": val})
 
                 # === RAM/Memory ===
@@ -185,29 +215,41 @@ class HardwareMonitor:
                     for sensor in hardware.Sensors:
                         s_type = self._get_sensor_type_name(sensor)
                         name = sensor.Name
-                        val = sensor.Value or 0
+                        val = self._safe_value(sensor.Value)
                         
                         if s_type == "Load":
-                            data["ram"]["load"] = val
+                            if "Memory" in name and "Virtual" not in name:
+                                data["ram"]["load"] = val
                         elif s_type == "Data":
-                            if "Used" in name:
+                            if "Used" in name and "Virtual" not in name:
                                 data["ram"]["used_gb"] = val
-                            elif "Available" in name:
+                            elif "Available" in name and "Virtual" not in name:
                                 data["ram"]["available_gb"] = val
 
                 # === Storage (SSDs, HDDs) ===
                 elif hw_type == "Storage":
-                    disk_info = {"name": hardware.Name, "temp": 0, "used": 0}
+                    disk_info = {"name": hardware.Name, "temp": 0, "health": 100}  # Default 100% se não tiver sensor
+                    has_health = False
                     for sensor in hardware.Sensors:
                         s_type = self._get_sensor_type_name(sensor)
-                        val = sensor.Value or 0
+                        name = sensor.Name
+                        val = self._safe_value(sensor.Value)
                         
-                        if s_type == "Temperature":
+                        if s_type == "Temperature" and val > 0:
                             disk_info["temp"] = max(disk_info["temp"], val)
-                        elif s_type == "Load":
-                            disk_info["used"] = val
+                        elif s_type == "Level":
+                            # "Available Spare" indica saúde do SSD (100% = novo)
+                            # "Percentage Used" indica desgaste (0% = novo, 100% = fim de vida)
+                            if "Available Spare" in name and val > 0:
+                                disk_info["health"] = val
+                                has_health = True
+                            elif "Percentage Used" in name and not has_health:
+                                # Converte desgaste para saúde (100 - usado = saúde)
+                                disk_info["health"] = max(0, 100 - val)
+                                has_health = True
                     
-                    if disk_info["temp"] > 0 or disk_info["used"] > 0:
+                    # Adiciona disco se tiver algum sensor válido
+                    if disk_info["temp"] > 0 or has_health:
                         data["storage"].append(disk_info)
 
         except Exception as e:

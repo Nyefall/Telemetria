@@ -1,0 +1,217 @@
+================================================================================
+LISTAGEM COMPLETA DE SENSORES DO SISTEMA
+(Execute como ADMINISTRADOR para ver todos os sensores)
+================================================================================
+
+============================================================
+HARDWARE: ASUS PRIME B450M-GAMING/BR
+TIPO: Motherboard
+============================================================
+
+  SUB-HARDWARE: ITE IT8655E (SuperIO)
+      [Control     ] Fan #1: N/A
+      [Control     ] Fan #2: N/A
+      [Control     ] Fan #3: 30.0
+      [Voltage     ] Vcore: 1.3842999935150146
+      [Voltage     ] Voltage #5: 1.3842999935150146
+      [Voltage     ] VBat: 1.3842999935150146
+      [Fan         ] Fan #1: 20.729047775268555
+      [Fan         ] Fan #2: 2647.058837890625
+      [Fan         ] Fan #3: 4530.201171875
+
+============================================================
+HARDWARE: AMD Ryzen 5 3600
+TIPO: Cpu
+============================================================
+
+  Sensores diretos (50):
+    [Load        ] CPU Core #1: 49.581199645996094
+    [Load        ] CPU Core #2: 60.65478515625
+    [Load        ] CPU Core #3: 67.5716552734375
+    [Load        ] CPU Core #4: 44.77914047241211
+    [Load        ] CPU Core #5: 39.49225616455078
+    [Load        ] CPU Core #6: 40.76278305053711
+    [Load        ] CPU Core #7: 26.54846954345703
+    [Load        ] CPU Core #8: 27.80584716796875
+    [Load        ] CPU Core #9: 27.25613784790039
+    [Load        ] CPU Core #10: 32.231266021728516
+    [Load        ] CPU Core #11: 33.22903060913086
+    [Load        ] CPU Core #12: 36.79233932495117
+    [Load        ] CPU Total: 40.55874252319336
+    [Load        ] CPU Core Max: 67.5716552734375
+    [Power       ] Package: 50.4628791809082
+    [Clock       ] Core #1: 3950.352294921875
+    [Factor      ] Core #1: 39.5
+    [Power       ] Core #1 (SMU): 3.261082887649536
+    [Voltage     ] Core #1 VID: 1.087499976158142
+    [Clock       ] Core #2: 3950.352294921875
+    [Factor      ] Core #2: 39.5
+    [Power       ] Core #2 (SMU): 3.3709471225738525
+    [Voltage     ] Core #2 VID: 1.087499976158142
+    [Clock       ] Core #3: 3950.352294921875
+    [Factor      ] Core #3: 39.5
+    [Power       ] Core #3 (SMU): 2.6400444507598877
+    [Voltage     ] Core #3 VID: 1.087499976158142
+    [Clock       ] Core #4: 3950.352294921875
+    [Factor      ] Core #4: 39.5
+    [Power       ] Core #4 (SMU): 2.028949022293091
+    [Voltage     ] Core #4 VID: 1.087499976158142
+    [Clock       ] Core #5: 3950.352294921875
+    [Factor      ] Core #5: 39.5
+    [Power       ] Core #5 (SMU): 2.1343204975128174
+    [Voltage     ] Core #5 VID: 1.087499976158142
+    [Clock       ] Core #6: 3950.352294921875
+    [Factor      ] Core #6: 39.5
+    [Power       ] Core #6 (SMU): 2.367826223373413
+    [Voltage     ] Core #6 VID: 1.087499976158142
+    [Temperature ] Core (Tctl/Tdie): 63.37500762939453
+    [Temperature ] CCD1 (Tdie): 64.25
+    [Voltage     ] Core (SVI2 TFN): 1.34375
+    [Voltage     ] SoC (SVI2 TFN): 1.087499976158142
+    [Clock       ] Bus Speed: 100.00891876220703
+    [Current     ] TDC: 16.10064125061035
+    [Current     ] EDC: 64.13639068603516
+    [Clock       ] Fabric: 1600.0
+    [Clock       ] Uncore: 1600.0
+    [Clock       ] Memory: 1600.0
+    [Temperature ] SoC: 46.73067092895508
+
+============================================================
+HARDWARE: Generic Memory
+TIPO: Memory
+============================================================
+
+  Sensores diretos (6):
+    [Data        ] Memory Used: 14.82449722290039
+    [Data        ] Memory Available: 1.0897254943847656
+    [Load        ] Memory: 93.15250396728516
+    [Data        ] Virtual Memory Used: 32.263160705566406
+    [Data        ] Virtual Memory Available: 8.830459594726562
+    [Load        ] Virtual Memory: 78.51136016845703
+
+============================================================
+HARDWARE: AMD Radeon RX 9060 XT
+TIPO: GpuAmd
+============================================================
+
+  Sensores diretos (22):
+    [Factor      ] Fullscreen FPS: 164.50074768066406
+    [SmallData   ] D3D Dedicated Memory Used: 8987.17578125
+    [SmallData   ] D3D Shared Memory Used: 1344.234375
+    [Load        ] D3D 3D: 45.354026794433594
+    [Load        ] D3D Copy: 0.026775531470775604
+    [Load        ] D3D Compute 0: 0.5660571455955505
+    [Load        ] D3D Copy: 4.580891132354736
+    [Load        ] D3D Timer 0: N/A
+    [Load        ] D3D Security 1: N/A
+    [Load        ] D3D Video JPEG 0: N/A
+    [Load        ] D3D Video Codec Engine: N/A
+    [Power       ] GPU Package: N/A
+    [Temperature ] GPU Core: 65.0
+    [Temperature ] GPU Memory: 68.0
+    [Temperature ] GPU Hot Spot: 80.0
+    [Clock       ] GPU Core: 3086.0
+    [Clock       ] GPU Memory: 2502.0
+    [Fan         ] GPU Fan: 1152.0
+    [Control     ] GPU Fan: 36.0
+    [Voltage     ] GPU Core: 0.9890000224113464
+    [Load        ] GPU Core: 100.0
+    [Load        ] GPU Memory: 9.0
+
+============================================================
+HARDWARE: WDC WDS480G2G0C-00AJM0
+TIPO: Storage
+============================================================
+
+  Sensores diretos (12):
+    [Temperature ] Temperature: 47.0
+    [Level       ] Available Spare: 100.0
+    [Level       ] Available Spare Threshold: 10.0
+    [Level       ] Percentage Used: 8.0
+    [Data        ] Data Read: 72789.0
+    [Data        ] Data Written: 46603.0
+    [Load        ] Used Space: 83.38479614257812
+    [Load        ] Read Activity: 5.6302860684809275e-06
+    [Load        ] Write Activity: 6.702599648633623e-07
+    [Load        ] Total Activity: 99.99980926513672
+    [Throughput  ] Read Rate: N/A
+    [Throughput  ] Write Rate: N/A
+
+============================================================
+HARDWARE: ST1000DM010-2EP102
+TIPO: Storage
+============================================================
+
+  Sensores diretos (7):
+    [Temperature ] Temperature: 33.0
+    [Load        ] Used Space: 74.40554809570312
+    [Load        ] Read Activity: 1.0514205541767296e-06
+    [Load        ] Write Activity: 4.615423847553757e-07
+    [Load        ] Total Activity: 99.99980163574219
+    [Throughput  ] Read Rate: N/A
+    [Throughput  ] Write Rate: N/A
+
+============================================================
+HARDWARE: Conexão Local* 1
+TIPO: Network
+============================================================
+
+  Sensores diretos (5):
+    [Data        ] Data Uploaded: N/A
+    [Data        ] Data Downloaded: N/A
+    [Throughput  ] Upload Speed: N/A
+    [Throughput  ] Download Speed: N/A
+    [Load        ] Network Utilization: N/A
+
+============================================================
+HARDWARE: Conexão Local* 2
+TIPO: Network
+============================================================
+
+  Sensores diretos (5):
+    [Data        ] Data Uploaded: N/A
+    [Data        ] Data Downloaded: N/A
+    [Throughput  ] Upload Speed: N/A
+    [Throughput  ] Download Speed: N/A
+    [Load        ] Network Utilization: N/A
+
+============================================================
+HARDWARE: Ethernet
+TIPO: Network
+============================================================
+
+  Sensores diretos (5):
+    [Data        ] Data Uploaded: 0.3207271099090576
+    [Data        ] Data Downloaded: 5.692563056945801
+    [Throughput  ] Upload Speed: 6594.0498046875
+    [Throughput  ] Download Speed: 178883.75
+    [Load        ] Network Utilization: 0.14838223159313202
+
+============================================================
+HARDWARE: Radmin VPN
+TIPO: Network
+============================================================
+
+  Sensores diretos (5):
+    [Data        ] Data Uploaded: 0.0020786412060260773
+    [Data        ] Data Downloaded: 1.564621925354004e-06
+    [Throughput  ] Upload Speed: 117.29556274414062
+    [Throughput  ] Download Speed: N/A
+    [Load        ] Network Utilization: 0.0009383645374327898
+
+============================================================
+HARDWARE: Wi-Fi 2
+TIPO: Network
+============================================================
+
+  Sensores diretos (5):
+    [Data        ] Data Uploaded: N/A
+    [Data        ] Data Downloaded: N/A
+    [Throughput  ] Upload Speed: N/A
+    [Throughput  ] Download Speed: N/A
+    [Load        ] Network Utilization: N/A
+
+================================================================================
+FIM DA LISTAGEM
+Saída salva em: C:\Users\enzop\Desktop\Telemetria\sensors_output.txt
+================================================================================
