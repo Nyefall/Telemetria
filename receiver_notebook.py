@@ -297,8 +297,9 @@ class TelemetryDashboard:
             self.update_panel_value(self.gpu_panel, "load", "Uso", gpu.get("load", 0), "%", 80, 95)
             self.update_panel_value(self.gpu_panel, "temp", "Temp", gpu.get("temp", 0), "°C", 75, 90)
             self.update_panel_value(self.gpu_panel, "voltage", "Voltagem", gpu.get("voltage", 0), "V")
-            self.update_panel_value(self.gpu_panel, "power", "Consumo", gpu.get("power", 0), "W")
             self.update_panel_value(self.gpu_panel, "clock_core", "Core", gpu.get("clock_core", 0), " MHz")
+            self.update_panel_value(self.gpu_panel, "clock_mem", "Mem Clk", gpu.get("clock_mem", 0), " MHz")
+            self.update_panel_value(self.gpu_panel, "mem_used", "VRAM", gpu.get("mem_used_mb", 0), " MB")
             self.update_panel_value(self.gpu_panel, "fan", "Fan", gpu.get("fan", 0), " RPM")
             
             # RAM
@@ -310,9 +311,13 @@ class TelemetryDashboard:
             # MOBO
             mobo = data.get("mobo", {})
             self.update_panel_value(self.mobo_panel, "temp", "Temp", mobo.get("temp", 0), "°C", 50, 70)
-            self.update_panel_value(self.mobo_panel, "v12", "+12V", mobo.get("voltage_12v", 0), "V")
-            self.update_panel_value(self.mobo_panel, "v5", "+5V", mobo.get("voltage_5v", 0), "V")
-            self.update_panel_value(self.mobo_panel, "v3", "+3.3V", mobo.get("voltage_3v", 0), "V")
+            
+            # Fans da MOBO
+            fans = data.get("fans", [])
+            for i, fan in enumerate(fans[:4]):  # Max 4 fans
+                name = fan.get("name", f"Fan {i}")[:10]
+                rpm = fan.get("rpm", 0)
+                self.update_panel_value(self.mobo_panel, f"fan{i}", name, rpm, " RPM")
             
             # STORAGE
             storage = data.get("storage", [])
@@ -322,10 +327,18 @@ class TelemetryDashboard:
                     self.storage_panel["labels"][key].master.destroy()
                     del self.storage_panel["labels"][key]
             
-            for i, disk in enumerate(storage[:3]):  # Max 3 discos
-                name = disk.get("name", f"Disk {i}")[:20]
+            for i, disk in enumerate(storage[:2]):  # Max 2 discos para caber mais info
+                name = disk.get("name", f"Disk {i}")[:15]
                 temp = disk.get("temp", 0)
-                self.update_panel_value(self.storage_panel, f"disk{i}", name, temp, "°C", 45, 55)
+                health = disk.get("health", 100)
+                used_space = disk.get("used_space", 0)
+                activity = disk.get("total_activity", 0)
+                
+                # Nome do disco como cabeçalho
+                self.update_panel_value(self.storage_panel, f"disk{i}_name", f"Disco {i+1}", name, "")
+                self.update_panel_value(self.storage_panel, f"disk{i}_temp", "  Temp", temp, "°C", 45, 55)
+                self.update_panel_value(self.storage_panel, f"disk{i}_health", "  Saúde", health, "%")
+                self.update_panel_value(self.storage_panel, f"disk{i}_used", "  Usado", used_space, "%", 80, 95)
             
             if not storage:
                 self.update_panel_value(self.storage_panel, "disk_na", "Status", "N/A", "")
