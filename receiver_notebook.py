@@ -78,17 +78,18 @@ class TelemetryDashboard:
         self.root = tk.Tk()
         self.root.title("Central de Telemetria")
         self.root.configure(bg='#0a0a0a')
-        self.root.geometry("1200x800")
+        self.root.geometry("1366x700")
+        self.root.minsize(1200, 600)
         
         self.is_fullscreen = False
         self.show_graphs = False
         
-        # Fontes
-        self.font_title = tkfont.Font(family="Consolas", size=24, weight="bold")
-        self.font_section = tkfont.Font(family="Consolas", size=14, weight="bold")
-        self.font_value = tkfont.Font(family="Consolas", size=18)
-        self.font_small = tkfont.Font(family="Consolas", size=11)
-        self.font_help = tkfont.Font(family="Consolas", size=10)
+        # Fontes (reduzidas para 1366x768)
+        self.font_title = tkfont.Font(family="Consolas", size=16, weight="bold")
+        self.font_section = tkfont.Font(family="Consolas", size=10, weight="bold")
+        self.font_value = tkfont.Font(family="Consolas", size=12)
+        self.font_small = tkfont.Font(family="Consolas", size=9)
+        self.font_help = tkfont.Font(family="Consolas", size=8)
         
         # Cores
         self.colors = {
@@ -110,7 +111,7 @@ class TelemetryDashboard:
         
         # Container principal com scroll
         self.main_frame = tk.Frame(self.root, bg=self.colors["bg"])
-        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
         # Título
         self.title_label = tk.Label(
@@ -145,7 +146,7 @@ class TelemetryDashboard:
             bg=self.colors["panel"],
             highlightthickness=1,
             highlightbackground=self.colors["border"],
-            height=200
+            height=150  # Altura reduzida para 1366x768
         )
         
         # Help bar
@@ -156,7 +157,7 @@ class TelemetryDashboard:
             fg=self.colors["dim"],
             bg=self.colors["bg"]
         )
-        self.help_label.pack(side=tk.BOTTOM, pady=5)
+        self.help_label.pack(side=tk.BOTTOM, pady=2)
         
         # Binds de teclado
         self.root.bind('<F>', self.toggle_fullscreen)
@@ -201,21 +202,21 @@ class TelemetryDashboard:
             highlightthickness=2,
             highlightbackground=color
         )
-        frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+        frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=3)
         
         # Título do painel
         title_lbl = tk.Label(
             frame,
-            text=f"━━ {title} ━━",
+            text=f"── {title} ──",
             font=self.font_section,
             fg=color,
             bg=self.colors["panel"]
         )
-        title_lbl.pack(pady=(10, 5))
+        title_lbl.pack(pady=(5, 3))
         
         # Container para valores
         values_frame = tk.Frame(frame, bg=self.colors["panel"])
-        values_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
+        values_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=5)
         
         return {"frame": frame, "values": values_frame, "labels": {}}
     
@@ -224,7 +225,7 @@ class TelemetryDashboard:
         if key not in panel["labels"]:
             # Cria linha
             row = tk.Frame(panel["values"], bg=self.colors["panel"])
-            row.pack(fill=tk.X, pady=2)
+            row.pack(fill=tk.X, pady=1)
             
             lbl_name = tk.Label(
                 row,
@@ -233,7 +234,7 @@ class TelemetryDashboard:
                 fg=self.colors["dim"],
                 bg=self.colors["panel"],
                 anchor="w",
-                width=12
+                width=10
             )
             lbl_name.pack(side=tk.LEFT)
             
@@ -243,7 +244,8 @@ class TelemetryDashboard:
                 font=self.font_value,
                 fg=self.colors["text"],
                 bg=self.colors["panel"],
-                anchor="e"
+                anchor="e",
+                width=12  # Largura fixa para evitar movimento
             )
             lbl_value.pack(side=tk.RIGHT)
             
