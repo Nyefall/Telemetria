@@ -309,9 +309,9 @@ class TelemetrySender:
             payload["fans"] = hw_data["fans"]
         
         # Obter informações do adaptador de rede (velocidade do link)
-        if self.hw_monitor and self.hw_monitor.enabled:
+        if self.monitor and self.monitor.enabled:
             try:
-                net_link = self.hw_monitor.get_network_link_info()
+                net_link = self.monitor.get_network_link_info()
                 payload["network"]["link_speed_mbps"] = net_link.get("link_speed_mbps", 0)
                 payload["network"]["adapter_name"] = net_link.get("adapter_name", "")
             except Exception:
@@ -349,9 +349,11 @@ class TelemetrySender:
                     # Magic byte: 0x01 = gzip, 0x00 = raw JSON
                     # Envia com prefixo indicando tipo de encoding
                     if len(compressed) < len(data):
-                        self.sock.sendto(b'\x01' + compressed, (DEST_IP, PORTA))
+                        sent = self.sock.sendto(b'\x01' + compressed, (DEST_IP, PORTA))
+                        print(f"[Send] {sent} bytes para {DEST_IP}:{PORTA} (gzip)")
                     else:
-                        self.sock.sendto(b'\x00' + data, (DEST_IP, PORTA))
+                        sent = self.sock.sendto(b'\x00' + data, (DEST_IP, PORTA))
+                        print(f"[Send] {sent} bytes para {DEST_IP}:{PORTA} (raw)")
                     
                 except Exception as e:
                     print(f"[Erro] {e}")

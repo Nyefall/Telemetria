@@ -333,8 +333,12 @@ class TelemetryDashboard:
                     try:
                         data, addr = sock.recvfrom(16384)
                         
+                        # Debug: mostrar de onde veio o pacote
+                        print(f"[Receiver] Pacote recebido de {addr[0]}:{addr[1]} ({len(data)} bytes)")
+                        
                         # Se modo manual, filtra por IP
                         if self.sender_ip and addr[0] != self.sender_ip:
+                            print(f"[Receiver] Ignorando pacote de {addr[0]} (esperado: {self.sender_ip})")
                             continue
                         
                         # Magic byte: 0x01 = gzip, 0x00 = raw JSON
