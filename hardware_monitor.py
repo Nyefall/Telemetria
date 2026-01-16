@@ -279,6 +279,79 @@ class HardwareMonitor:
             
         return data
 
+    def get_network_link_info(self):
+        """Retorna informações de link de rede (velocidade negociada, status)"""
+        info = {
+            "link_speed_mbps": 0,
+            "link_status": "Unknown",
+            "adapter_name": ""
+        }
+        
+        try:
+            import subprocess
+            import json as json_mod
+            import re
+            
+            # Usar PowerShell para obter velocidade do link
+            result = subprocess.run(
+                ['powershell', '-Command', 
+                 'Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object Name, LinkSpeed, Status | ConvertTo-Json'],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                creationflags=0x08000000  # CREATE_NO_WINDOW
+            )
+            
+            if result.returncode == 0 and result.stdout.strip():
+                adapters = json_mod.loads(result.stdout)
+                
+                # Se for um único adaptador, vem como dict, não lista
+                if isinstance(adapters, dict):
+                    adapters = [adapters]
+                
+                # Procurar por adaptador Ethernet primeiro
+                for adapter in adapters:
+                    name = adapter.get('Name', '').lower()
+                    if 'ethernet' in name or 'eth' in name or 'lan' in name:
+                        link_speed_str = adapter.get('LinkSpeed', '0')
+                        info['adapter_name'] = adapter.get('Name', '')
+                        info['link_status'] = adapter.get('Status', 'Unknown')
+                        info['link_speed_mbps'] = self._parse_link_speed(link_speed_str)
+                        break
+                
+                # Se não encontrou Ethernet, pegar o primeiro disponível
+                if info['link_speed_mbps'] == 0 and adapters:
+                    adapter = adapters[0]
+                    link_speed_str = adapter.get('LinkSpeed', '0')
+                    info['adapter_name'] = adapter.get('Name', '')
+                    info['link_status'] = adapter.get('Status', 'Unknown')
+                    info['link_speed_mbps'] = self._parse_link_speed(link_speed_str)
+                    
+        except Exception:
+            pass
+            
+        return info
+    
+    def _parse_link_speed(self, speed_str):
+        """Converte string de velocidade para Mbps"""
+        import re
+        try:
+            speed_str = str(speed_str).strip()
+            match = re.match(r'([\d.]+)\s*(Gbps|Mbps|Kbps)?', speed_str, re.IGNORECASE)
+            if match:
+                value = float(match.group(1))
+                unit = (match.group(2) or 'Mbps').lower()
+                
+                if 'gbps' in unit:
+                    return int(value * 1000)
+                elif 'kbps' in unit:
+                    return int(value / 1000)
+                else:
+                    return int(value)
+        except Exception:
+            pass
+        return 0
+
     def close(self):
         if self.enabled and self.computer:
             self.computer.Close()

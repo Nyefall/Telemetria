@@ -283,7 +283,9 @@ class TelemetrySender:
             "network": {
                 "down_kbps": round(down, 1),
                 "up_kbps": round(up, 1),
-                "ping_ms": ping
+                "ping_ms": ping,
+                "link_speed_mbps": 0,
+                "adapter_name": ""
             }
         }
         
@@ -305,6 +307,15 @@ class TelemetrySender:
             payload["mobo"]["temp"] = round(hw_data["mobo"]["temp"], 1)
             payload["storage"] = hw_data["storage"]
             payload["fans"] = hw_data["fans"]
+        
+        # Obter informações do adaptador de rede (velocidade do link)
+        if self.hw_monitor and self.hw_monitor.enabled:
+            try:
+                net_link = self.hw_monitor.get_network_link_info()
+                payload["network"]["link_speed_mbps"] = net_link.get("link_speed_mbps", 0)
+                payload["network"]["adapter_name"] = net_link.get("adapter_name", "")
+            except Exception:
+                pass
         
         return payload
     

@@ -48,7 +48,8 @@ def carregar_config():
     config_padrao = {
         "porta": 5005,
         "sender_ip": "",  # Vazio = broadcast/auto
-        "modo": "auto"     # "auto" ou "manual"
+        "modo": "auto",    # "auto" ou "manual"
+        "expected_link_speed_mbps": 1000  # Velocidade esperada: CAT5=100, CAT5e/6=1000, CAT6a/7=10000
     }
     
     if os.path.exists(CONFIG_PATH):
@@ -554,6 +555,28 @@ class TelemetryDashboard:
         self._update_value(self.network_panel, "down", "Download", net.get("down_kbps", 0), " KB/s")
         self._update_value(self.network_panel, "up", "Upload", net.get("up_kbps", 0), " KB/s")
         self._update_value(self.network_panel, "ping", "Ping", net.get("ping_ms", 0), " ms", 50, 100)
+        
+        # Link Speed com verificação de saúde baseada na velocidade esperada
+        link_speed = net.get("link_speed_mbps", 0)
+        adapter = net.get("adapter_name", "N/A")
+        expected_speed = self.config.get("expected_link_speed_mbps", 1000)
+        
+        # Determinar saúde do link baseado na velocidade ESPERADA (configurável)
+        if link_speed >= expected_speed:
+            link_status = "OK"
+            link_color = self.colors['good']
+        elif link_speed >= expected_speed * 0.1:
+            link_status = f"Esperado: {expected_speed}"
+            link_color = self.colors['warning']
+        elif link_speed > 0:
+            link_status = f"Esperado: {expected_speed}"
+            link_color = self.colors['critical']
+        else:
+            link_status = "N/A"
+            link_color = self.colors['label']
+        
+        self._update_value(self.network_panel, "link", "Link", link_speed, " Mbps", expected_speed * 0.5, expected_speed * 0.1)
+        self._update_value(self.network_panel, "adapter", "Adaptador", adapter[:15] if adapter else "N/A", "")
     
     def _log_to_csv(self, data):
         """Salva dados em arquivo CSV."""
