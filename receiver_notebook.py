@@ -61,13 +61,14 @@ def carregar_config():
         except Exception as e:
             print(f"[Config] Erro ao ler: {e}")
     
-    # Tenta ler porta do config.json antigo
+    # Tenta ler porta e expected_link_speed_mbps do config.json antigo
     old_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
     if os.path.exists(old_config):
         try:
             with open(old_config, 'r', encoding='utf-8') as f:
                 old = json.load(f)
                 config_padrao["porta"] = old.get("porta", 5005)
+                config_padrao["expected_link_speed_mbps"] = old.get("expected_link_speed_mbps", 1000)
         except:
             pass
     
