@@ -48,6 +48,12 @@ try:
 except ImportError:
     HAS_THEME_MODULE = False
 
+try:
+    from core.sounds import get_sound_manager, AlertSound
+    HAS_SOUND_MODULE = True
+except ImportError:
+    HAS_SOUND_MODULE = False
+
 
 # ========== CONFIGURAÇÕES ==========
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_config.json")
@@ -465,25 +471,33 @@ class TelemetryDashboard:
             lbl.config(fg=self.colors["text"])
     
     def _notify_critical(self, key: str, label: str, value: float, unit: str) -> None:
-        """Envia notificação Windows para valores críticos."""
-        if not self.toaster:
-            return
-        
+        """Envia notificação Windows e toca som para valores críticos."""
         now = time.time()
         last_notify = self.notified_critical.get(key, 0)
         
         # Notifica no máximo a cada 60 segundos por métrica
         if now - last_notify > 60:
             self.notified_critical[key] = now
-            try:
-                self.toaster.show_toast(
-                    "⚠️ Telemetria - Alerta Crítico",
-                    f"{label}: {value:.1f}{unit}",
-                    duration=5,
-                    threaded=True
-                )
-            except:
-                pass
+            
+            # Toca som de alerta crítico
+            if HAS_SOUND_MODULE:
+                try:
+                    sound_manager = get_sound_manager()
+                    sound_manager.play(AlertSound.BEEP_URGENT)
+                except:
+                    pass
+            
+            # Mostra notificação Windows
+            if self.toaster:
+                try:
+                    self.toaster.show_toast(
+                        "⚠️ Telemetria - Alerta Crítico",
+                        f"{label}: {value:.1f}{unit}",
+                        duration=5,
+                        threaded=True
+                    )
+                except:
+                    pass
     
     def _update_ui(self):
         """Atualiza a interface com os dados mais recentes."""

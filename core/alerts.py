@@ -31,6 +31,10 @@ class AlertConfig:
     # Discord
     discord_webhook_url: str = ""
     
+    # ntfy.sh (push notifications gratuitas)
+    ntfy_topic: str = ""  # Ex: "meu-pc-telemetria" (será a URL ntfy.sh/SEU_TOPIC)
+    ntfy_server: str = "https://ntfy.sh"  # Pode usar servidor próprio
+    
     # Webhook genérico
     generic_webhook_url: str = ""
     
@@ -47,8 +51,12 @@ class AlertConfig:
         return bool(self.discord_webhook_url)
     
     @property
+    def ntfy_enabled(self) -> bool:
+        return bool(self.ntfy_topic)
+    
+    @property
     def any_enabled(self) -> bool:
-        return self.enabled and (self.telegram_enabled or self.discord_enabled)
+        return self.enabled and (self.telegram_enabled or self.discord_enabled or self.ntfy_enabled)
 
 
 class AlertManager:
@@ -149,6 +157,9 @@ class AlertManager:
         if self.config.discord_enabled:
             results["discord"] = self._test_discord()
         
+        if self.config.ntfy_enabled:
+            results["ntfy"] = self._test_ntfy()
+        
         return results
     
     def _send_all(self, message: str, level: AlertLevel) -> None:
@@ -158,6 +169,9 @@ class AlertManager:
         
         if self.config.discord_enabled:
             self._send_discord(message, level)
+        
+        if self.config.ntfy_enabled:
+            self._send_ntfy(message, level)
     
     def _send_telegram(self, message: str) -> bool:
         """Envia mensagem via Telegram Bot API"""
@@ -206,6 +220,49 @@ class AlertManager:
             print(f"[Alerts] Erro ao enviar Discord: {e}")
             return False
     
+    def _send_ntfy(self, message: str, level: AlertLevel) -> bool:
+        """
+        Envia notificação via ntfy.sh
+        
+        ntfy.sh é um serviço gratuito de push notifications.
+        Basta instalar o app ntfy no celular e se inscrever no tópico.
+        
+        Docs: https://ntfy.sh
+        """
+        try:
+            url = f"{self.config.ntfy_server}/{self.config.ntfy_topic}"
+            
+            # Prioridades do ntfy: 1=min, 2=low, 3=default, 4=high, 5=urgent
+            priorities = {
+                AlertLevel.INFO: "3",
+                AlertLevel.WARNING: "4",
+                AlertLevel.CRITICAL: "5"
+            }
+            
+            # Tags (emojis) do ntfy
+            tags = {
+                AlertLevel.INFO: "information_source",
+                AlertLevel.WARNING: "warning",
+                AlertLevel.CRITICAL: "rotating_light,skull"
+            }
+            
+            headers = {
+                "Title": "Telemetria - Alerta",
+                "Priority": priorities.get(level, "3"),
+                "Tags": tags.get(level, "computer"),
+            }
+            
+            # Adiciona ação de clique se for crítico
+            if level == AlertLevel.CRITICAL:
+                headers["Actions"] = "view, Ver Dashboard, http://localhost:8080"
+            
+            request = Request(url, data=message.encode('utf-8'), headers=headers)
+            with urlopen(request, timeout=10) as response:
+                return response.status == 200
+        except Exception as e:
+            print(f"[Alerts] Erro ao enviar ntfy: {e}")
+            return False
+    
     def _test_telegram(self) -> bool:
         """Testa conexão com Telegram"""
         try:
@@ -219,6 +276,22 @@ class AlertManager:
         """Testa conexão com Discord"""
         try:
             request = Request(self.config.discord_webhook_url, method="GET")
+            with urlopen(request, timeout=10) as response:
+                return response.status == 200
+        except:
+            return False
+    
+    def _test_ntfy(self) -> bool:
+        """Testa conexão com ntfy.sh"""
+        try:
+            # Envia mensagem de teste silenciosa (priority 1 = min)
+            url = f"{self.config.ntfy_server}/{self.config.ntfy_topic}"
+            headers = {
+                "Title": "Telemetria - Teste",
+                "Priority": "1",  # Mínima para não incomodar
+                "Tags": "white_check_mark"
+            }
+            request = Request(url, data=b"Conexao OK!", headers=headers)
             with urlopen(request, timeout=10) as response:
                 return response.status == 200
         except:
