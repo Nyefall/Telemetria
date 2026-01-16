@@ -11,6 +11,7 @@ Atalhos:
     I: Configurar IP do Sender (conexão manual)
     Q/ESC: Sair
 """
+from __future__ import annotations
 
 import socket
 import json
@@ -23,6 +24,7 @@ from collections import deque
 import threading
 import time
 from datetime import datetime
+from typing import Optional, Any, Deque
 
 # ========== DPI AWARENESS (Windows) ==========
 try:
@@ -39,11 +41,19 @@ except ImportError:
     HAS_TOAST = False
     print("[Aviso] win10toast não instalado. Notificações desativadas.")
 
+# ========== MÓDULOS LOCAIS (se disponíveis) ==========
+try:
+    from ui.themes import get_legacy_colors, get_theme_names
+    HAS_THEME_MODULE = True
+except ImportError:
+    HAS_THEME_MODULE = False
+
 
 # ========== CONFIGURAÇÕES ==========
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver_config.json")
 
-def carregar_config():
+
+def carregar_config() -> dict[str, Any]:
     """Carrega configurações do receiver_config.json ou usa padrões."""
     config_padrao = {
         "porta": 5005,
@@ -74,7 +84,8 @@ def carregar_config():
     
     return config_padrao
 
-def salvar_config(config):
+
+def salvar_config(config: dict[str, Any]) -> bool:
     """Salva configurações do receiver."""
     try:
         with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
@@ -85,6 +96,7 @@ def salvar_config(config):
         print(f"[Config] Erro ao salvar: {e}")
         return False
 
+
 CONFIG = carregar_config()
 HOST = "0.0.0.0"
 PORTA = CONFIG["porta"]
@@ -94,9 +106,13 @@ CONNECTION_TIMEOUT = 5  # segundos sem dados = desconectado
 
 
 class TelemetryDashboard:
-    """Dashboard principal de telemetria."""
+    """
+    Dashboard principal de telemetria.
     
-    def __init__(self):
+    Exibe métricas de hardware em tempo real recebidas via UDP.
+    """
+    
+    def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("Central de Telemetria")
         self.root.geometry("1366x700")
@@ -138,41 +154,47 @@ class TelemetryDashboard:
         # Toast notifier
         self.toaster = ToastNotifier() if HAS_TOAST else None
         
-        # Temas
-        self.themes = {
-            "dark": {
-                "bg": "#0a0a0a",
-                "panel": "#1a1a1a",
-                "border": "#333333",
-                "title": "#00ffff",
-                "cpu": "#00bfff",
-                "gpu": "#00ff00",
-                "ram": "#ff00ff",
-                "mobo": "#ffaa00",
-                "storage": "#ff6600",
-                "network": "#00ffaa",
-                "warning": "#ffff00",
-                "critical": "#ff3333",
-                "text": "#ffffff",
-                "dim": "#888888"
-            },
-            "light": {
-                "bg": "#f0f0f0",
-                "panel": "#ffffff",
-                "border": "#cccccc",
-                "title": "#0066cc",
-                "cpu": "#0088cc",
-                "gpu": "#00aa00",
-                "ram": "#aa00aa",
-                "mobo": "#cc7700",
-                "storage": "#cc4400",
-                "network": "#00aa77",
-                "warning": "#cc9900",
-                "critical": "#cc0000",
-                "text": "#000000",
-                "dim": "#666666"
+        # Temas - usa módulo se disponível, senão fallback para inline
+        if HAS_THEME_MODULE:
+            self.themes = {
+                "dark": get_legacy_colors(dark_mode=True),
+                "light": get_legacy_colors(dark_mode=False)
             }
-        }
+        else:
+            self.themes = {
+                "dark": {
+                    "bg": "#0a0a0a",
+                    "panel": "#1a1a1a",
+                    "border": "#333333",
+                    "title": "#00ffff",
+                    "cpu": "#00bfff",
+                    "gpu": "#00ff00",
+                    "ram": "#ff00ff",
+                    "mobo": "#ffaa00",
+                    "storage": "#ff6600",
+                    "network": "#00ffaa",
+                    "warning": "#ffff00",
+                    "critical": "#ff3333",
+                    "text": "#ffffff",
+                    "dim": "#888888"
+                },
+                "light": {
+                    "bg": "#f0f0f0",
+                    "panel": "#ffffff",
+                    "border": "#cccccc",
+                    "title": "#0066cc",
+                    "cpu": "#0088cc",
+                    "gpu": "#00aa00",
+                    "ram": "#aa00aa",
+                    "mobo": "#cc7700",
+                    "storage": "#cc4400",
+                    "network": "#00aa77",
+                    "warning": "#cc9900",
+                    "critical": "#cc0000",
+                    "text": "#000000",
+                    "dim": "#666666"
+                }
+            }
         self.colors = self.themes["dark"]
         
         # Configura janela
@@ -442,7 +464,7 @@ class TelemetryDashboard:
         else:
             lbl.config(fg=self.colors["text"])
     
-    def _notify_critical(self, key, label, value, unit):
+    def _notify_critical(self, key: str, label: str, value: float, unit: str) -> None:
         """Envia notificação Windows para valores críticos."""
         if not self.toaster:
             return

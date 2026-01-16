@@ -1,6 +1,15 @@
+"""
+Hardware Monitor - Interface com LibreHardwareMonitor
+=====================================================
+Coleta dados de sensores de hardware via LibreHardwareMonitor DLL.
+Requer privilégios de administrador.
+"""
+from __future__ import annotations
+
 import os
 import sys
 import math
+from typing import Any, Optional
 
 # Tenta importar pythonnet (clr)
 try:
@@ -13,8 +22,19 @@ except ImportError:
 # SensorType: Voltage, Clock, Temperature, Load, Frequency, Fan, Flow, Control, Level, Factor, Power, Data, SmallData, Throughput
 # HardwareType: Motherboard, SuperIO, Cpu, Memory, GpuNvidia, GpuAmd, GpuIntel, Storage, Network, Cooler, EmbeddedController, Psu
 
+
 class HardwareMonitor:
-    def __init__(self):
+    """
+    Monitor de hardware usando LibreHardwareMonitor.
+    
+    Exemplo:
+        monitor = HardwareMonitor()
+        if monitor.enabled:
+            data = monitor.fetch_data()
+            print(f"CPU Temp: {data['cpu']['temp']}°C")
+    """
+    
+    def __init__(self) -> None:
         self.computer = None
         self.enabled = False
         self.Hardware = None  # Namespace reference
@@ -54,15 +74,15 @@ class HardwareMonitor:
             print(f"[HardwareMonitor] Erro ao inicializar (Rode como Admin!): {e}")
             self.computer = None
 
-    def _get_sensor_type_name(self, sensor):
+    def _get_sensor_type_name(self, sensor: Any) -> str:
         """Retorna o nome do tipo do sensor como string."""
         return str(sensor.SensorType).split('.')[-1]
 
-    def _get_hardware_type_name(self, hardware):
+    def _get_hardware_type_name(self, hardware: Any) -> str:
         """Retorna o nome do tipo de hardware como string."""
         return str(hardware.HardwareType).split('.')[-1]
     
-    def _safe_value(self, val):
+    def _safe_value(self, val: Any) -> float:
         """Retorna 0 se valor for None, NaN ou inválido."""
         if val is None:
             return 0
@@ -73,7 +93,7 @@ class HardwareMonitor:
         except:
             return 0
 
-    def fetch_data(self):
+    def fetch_data(self) -> dict[str, Any]:
         """
         Retorna dicionário completo com todos os sensores disponíveis.
         """
@@ -279,9 +299,9 @@ class HardwareMonitor:
             
         return data
 
-    def get_network_link_info(self):
+    def get_network_link_info(self) -> dict[str, Any]:
         """Retorna informações de link de rede (velocidade negociada, status)"""
-        info = {
+        info: dict[str, Any] = {
             "link_speed_mbps": 0,
             "link_status": "Unknown",
             "adapter_name": ""
@@ -332,7 +352,7 @@ class HardwareMonitor:
             
         return info
     
-    def _parse_link_speed(self, speed_str):
+    def _parse_link_speed(self, speed_str: str) -> int:
         """Converte string de velocidade para Mbps"""
         import re
         try:
@@ -352,7 +372,8 @@ class HardwareMonitor:
             pass
         return 0
 
-    def close(self):
+    def close(self) -> None:
+        """Fecha a conexão com LibreHardwareMonitor"""
         if self.enabled and self.computer:
             self.computer.Close()
             print("[HardwareMonitor] Fechado.")

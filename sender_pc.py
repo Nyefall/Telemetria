@@ -6,6 +6,7 @@ Roda na bandeja do sistema (System Tray) após inicialização.
 
 Requer privilégios de administrador para acessar sensores.
 """
+from __future__ import annotations
 
 import psutil
 import socket
@@ -16,6 +17,7 @@ import os
 import gzip
 import ctypes
 import threading
+from typing import Optional, Any
 
 # ========== AUTO-ELEVAÇÃO PARA ADMINISTRADOR ==========
 def is_admin():
@@ -128,6 +130,11 @@ class TelemetrySender:
         self.icon = None
         self.last_net = None
         self.last_t = None
+        
+        # Cache para link de rede (evita chamar PowerShell a cada ciclo)
+        self.cached_link_info: dict = {"link_speed_mbps": 0, "adapter_name": ""}
+        self.last_link_check: float = 0
+        self.LINK_CHECK_INTERVAL: float = 10.0  # Verificar apenas a cada 10 segundos
         
         # Inicializa socket
         self._init_socket()
@@ -308,12 +315,19 @@ class TelemetrySender:
             payload["storage"] = hw_data["storage"]
             payload["fans"] = hw_data["fans"]
         
-        # Obter informações do adaptador de rede (velocidade do link)
+        # Obter informações do adaptador de rede (velocidade do link) COM CACHE
+        # A velocidade do link não muda frequentemente, só quando desconecta o cabo
         if self.monitor and self.monitor.enabled:
             try:
-                net_link = self.monitor.get_network_link_info()
-                payload["network"]["link_speed_mbps"] = net_link.get("link_speed_mbps", 0)
-                payload["network"]["adapter_name"] = net_link.get("adapter_name", "")
+                current_time = time.time()
+                # Só chama o PowerShell se passou o tempo do intervalo
+                if current_time - self.last_link_check > self.LINK_CHECK_INTERVAL:
+                    self.cached_link_info = self.monitor.get_network_link_info()
+                    self.last_link_check = current_time
+                
+                # Usa os dados cacheados
+                payload["network"]["link_speed_mbps"] = self.cached_link_info.get("link_speed_mbps", 0)
+                payload["network"]["adapter_name"] = self.cached_link_info.get("adapter_name", "")
             except Exception:
                 pass
         
