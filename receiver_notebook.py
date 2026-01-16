@@ -589,16 +589,16 @@ class TelemetryDashboard:
         # Determinar saúde do link baseado na velocidade ESPERADA (configurável)
         if link_speed >= expected_speed:
             link_status = "OK"
-            link_color = self.colors['good']
+            link_color = self.colors['gpu']  # Verde
         elif link_speed >= expected_speed * 0.1:
             link_status = f"Esperado: {expected_speed}"
-            link_color = self.colors['warning']
+            link_color = self.colors['warning']  # Amarelo
         elif link_speed > 0:
             link_status = f"Esperado: {expected_speed}"
-            link_color = self.colors['critical']
+            link_color = self.colors['critical']  # Vermelho
         else:
             link_status = "N/A"
-            link_color = self.colors['label']
+            link_color = self.colors['dim']  # Cinza
         
         self._update_value(self.network_panel, "link", "Link", link_speed, " Mbps", expected_speed * 0.5, expected_speed * 0.1)
         self._update_value(self.network_panel, "adapter", "Adaptador", adapter[:15] if adapter else "N/A", "")
