@@ -358,6 +358,10 @@ class TelemetryDashboard:
                         
                         payload = json.loads(data.decode())
                         
+                        # Debug: confirmar que o payload foi parseado
+                        cpu_usage = payload.get("cpu", {}).get("usage", 0)
+                        print(f"[Receiver] Payload OK - CPU: {cpu_usage}%")
+                        
                         with self.data_lock:
                             self.current_data = payload
                             self.last_data_time = time.time()
@@ -461,43 +465,59 @@ class TelemetryDashboard:
     
     def _update_ui(self):
         """Atualiza a interface com os dados mais recentes."""
-        with self.data_lock:
-            data = self.current_data.copy() if self.current_data else None
-            last_time = self.last_data_time
+        try:
+            with self.data_lock:
+                data = self.current_data.copy() if self.current_data else None
+                last_time = self.last_data_time
+            
+            now = time.time()
+            time_diff = now - last_time if last_time else float('inf')
+            
+            # Debug: atualizar título para provar que UI está viva
+            self.root.title(f"Central de Telemetria - {time.strftime('%H:%M:%S')}")
+            
+            # Debug: verificar estado
+            if data:
+                print(f"[UI] Dados disponíveis, time_diff={time_diff:.1f}s, timeout={CONNECTION_TIMEOUT}s")
+            
+            # Verifica timeout de conexão
+            if data and (now - last_time) < CONNECTION_TIMEOUT:
+                if not self.is_connected:
+                    self.is_connected = True
+                
+                self.status_label.config(
+                    text=f"● Conectado | Atualizado: {time.strftime('%H:%M:%S')}" + 
+                         (f" | 📝 LOG" if self.logging_enabled else ""),
+                    fg=self.colors["gpu"]
+                )
+                
+                self._update_panels(data)
+                
+                # Log CSV
+                if self.logging_enabled:
+                    self._log_to_csv(data)
+                
+                # Gráficos
+                if self.show_graphs:
+                    self._draw_graphs()
+            else:
+                if self.is_connected:
+                    self.is_connected = False
+                
+                mode_text = f" (IP: {self.sender_ip})" if self.sender_ip else " (broadcast)"
+                self.status_label.config(
+                    text=f"○ Desconectado - Aguardando dados...{mode_text} | [I] Config",
+                    fg=self.colors["critical"]
+                )
         
-        now = time.time()
+        except Exception as e:
+            print(f"[UI] Erro na atualização: {e}")
         
-        # Verifica timeout de conexão
-        if data and (now - last_time) < CONNECTION_TIMEOUT:
-            if not self.is_connected:
-                self.is_connected = True
-            
-            self.status_label.config(
-                text=f"● Conectado | Atualizado: {time.strftime('%H:%M:%S')}" + 
-                     (f" | 📝 LOG" if self.logging_enabled else ""),
-                fg=self.colors["gpu"]
-            )
-            
-            self._update_panels(data)
-            
-            # Log CSV
-            if self.logging_enabled:
-                self._log_to_csv(data)
-            
-            # Gráficos
-            if self.show_graphs:
-                self._draw_graphs()
-        else:
-            if self.is_connected:
-                self.is_connected = False
-            
-            mode_text = f" (IP: {self.sender_ip})" if self.sender_ip else " (broadcast)"
-            self.status_label.config(
-                text=f"○ Desconectado - Aguardando dados...{mode_text} | [I] Config",
-                fg=self.colors["critical"]
-            )
-        
-        self.root.after(500, self._update_ui)
+        # Agenda próxima atualização (sempre, mesmo com erro)
+        try:
+            self.root.after(500, self._update_ui)
+        except Exception as e:
+            print(f"[UI] Erro ao agendar update: {e}")
     
     def _update_panels(self, data):
         """Atualiza todos os painéis com os dados."""
@@ -564,7 +584,7 @@ class TelemetryDashboard:
         # Link Speed com verificação de saúde baseada na velocidade esperada
         link_speed = net.get("link_speed_mbps", 0)
         adapter = net.get("adapter_name", "N/A")
-        expected_speed = self.config.get("expected_link_speed_mbps", 1000)
+        expected_speed = CONFIG.get("expected_link_speed_mbps", 1000)
         
         # Determinar saúde do link baseado na velocidade ESPERADA (configurável)
         if link_speed >= expected_speed:
