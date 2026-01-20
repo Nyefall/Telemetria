@@ -8,7 +8,8 @@ Atalhos:
     F/F11: Fullscreen
     T: Alternar tema (escuro/claro)
     L: Ativar/desativar log CSV
-    I: Configurar IP do Sender (conexão manual)
+    S: ⚙️ Configurações Gerais (Conexão, Aparência, Alertas, Notificações)
+    I: Configurar IP do Sender (atalho para configurações)
     Q/ESC: Sair
 """
 from __future__ import annotations
@@ -19,6 +20,7 @@ import sys
 import os
 import gzip
 import tkinter as tk
+from tkinter import ttk
 from tkinter import font as tkfont
 from collections import deque
 import threading
@@ -62,10 +64,68 @@ CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "receiver
 def carregar_config() -> dict[str, Any]:
     """Carrega configurações do receiver_config.json ou usa padrões."""
     config_padrao = {
+        # === CONEXÃO ===
         "porta": 5005,
         "sender_ip": "",  # Vazio = broadcast/auto
         "modo": "auto",    # "auto" ou "manual"
-        "expected_link_speed_mbps": 1000  # Velocidade esperada: CAT5=100, CAT5e/6=1000, CAT6a/7=10000
+        "expected_link_speed_mbps": 1000,  # Velocidade esperada: CAT5=100, CAT5e/6=1000, CAT6a/7=10000
+        
+        # === APARÊNCIA ===
+        "tema": "dark",  # dark, light, high_contrast, cyberpunk
+        "cores_customizadas": {
+            "cpu": "",      # Vazio = usa cor do tema
+            "gpu": "",
+            "ram": "",
+            "storage": "",
+            "network": "",
+            "mobo": ""
+        },
+        
+        # === ALERTAS (Thresholds) ===
+        "alertas": {
+            "cpu_temp_warning": 70,
+            "cpu_temp_critical": 85,
+            "cpu_uso_warning": 70,
+            "cpu_uso_critical": 90,
+            "gpu_temp_warning": 75,
+            "gpu_temp_critical": 90,
+            "gpu_uso_warning": 80,
+            "gpu_uso_critical": 95,
+            "ram_warning": 70,
+            "ram_critical": 90,
+            "storage_temp_warning": 45,
+            "storage_temp_critical": 55,
+            "storage_uso_warning": 80,
+            "storage_uso_critical": 95,
+            "ping_warning": 50,
+            "ping_critical": 100
+        },
+        
+        # === SONS ===
+        "sons": {
+            "enabled": True,
+            "cooldown_seconds": 10,
+            "warning_sound": "warning",
+            "critical_sound": "beep_urgent"
+        },
+        
+        # === NOTIFICAÇÕES WEBHOOK ===
+        "webhooks": {
+            "enabled": False,
+            "telegram_bot_token": "",
+            "telegram_chat_id": "",
+            "discord_webhook_url": "",
+            "ntfy_topic": "",
+            "ntfy_server": "https://ntfy.sh",
+            "cooldown_seconds": 300  # 5 minutos
+        },
+        
+        # === HISTÓRICO ===
+        "historico": {
+            "csv_enabled": False,
+            "auto_start_log": False,
+            "retention_days": 7
+        }
     }
     
     if os.path.exists(CONFIG_PATH):
@@ -287,7 +347,7 @@ class TelemetryDashboard:
         # Help bar
         self.help_label = tk.Label(
             self.main_frame,
-            text="[F] Fullscreen | [G] Gráficos | [T] Tema | [L] Log | [I] Config IP | [Q] Sair",
+            text="[F] Fullscreen | [G] Gráficos | [T] Tema | [L] Log | [S] ⚙️ Configurações | [Q] Sair",
             font=self.font_help,
             fg=self.colors["dim"],
             bg=self.colors["bg"]
@@ -339,6 +399,8 @@ class TelemetryDashboard:
         self.root.bind('<l>', self._toggle_logging)
         self.root.bind('<I>', self._show_ip_config)
         self.root.bind('<i>', self._show_ip_config)
+        self.root.bind('<S>', self._show_settings)
+        self.root.bind('<s>', self._show_settings)
         self.root.bind('<q>', self._quit_app)
         self.root.bind('<Q>', self._quit_app)
         self.root.bind('<Escape>', self._quit_app)
@@ -557,18 +619,25 @@ class TelemetryDashboard:
     
     def _update_panels(self, data):
         """Atualiza todos os painéis com os dados."""
+        # Obter thresholds das configurações
+        alertas = CONFIG.get("alertas", {})
+        
         # CPU
         cpu = data.get("cpu", {})
-        self._update_value(self.cpu_panel, "usage", "Uso", cpu.get("usage", 0), "%", 70, 90)
-        self._update_value(self.cpu_panel, "temp", "Temp", cpu.get("temp", 0), "°C", 70, 85)
+        self._update_value(self.cpu_panel, "usage", "Uso", cpu.get("usage", 0), "%", 
+                          alertas.get("cpu_uso_warning", 70), alertas.get("cpu_uso_critical", 90))
+        self._update_value(self.cpu_panel, "temp", "Temp", cpu.get("temp", 0), "°C", 
+                          alertas.get("cpu_temp_warning", 70), alertas.get("cpu_temp_critical", 85))
         self._update_value(self.cpu_panel, "voltage", "Voltagem", cpu.get("voltage", 0), "V")
         self._update_value(self.cpu_panel, "power", "Consumo", cpu.get("power", 0), "W")
         self._update_value(self.cpu_panel, "clock", "Clock", cpu.get("clock", 0), " MHz")
         
         # GPU
         gpu = data.get("gpu", {})
-        self._update_value(self.gpu_panel, "load", "Uso", gpu.get("load", 0), "%", 80, 95)
-        self._update_value(self.gpu_panel, "temp", "Temp", gpu.get("temp", 0), "°C", 75, 90)
+        self._update_value(self.gpu_panel, "load", "Uso", gpu.get("load", 0), "%", 
+                          alertas.get("gpu_uso_warning", 80), alertas.get("gpu_uso_critical", 95))
+        self._update_value(self.gpu_panel, "temp", "Temp", gpu.get("temp", 0), "°C", 
+                          alertas.get("gpu_temp_warning", 75), alertas.get("gpu_temp_critical", 90))
         self._update_value(self.gpu_panel, "voltage", "Voltagem", gpu.get("voltage", 0), "V")
         self._update_value(self.gpu_panel, "clock_core", "Core", gpu.get("clock_core", 0), " MHz")
         self._update_value(self.gpu_panel, "clock_mem", "Mem Clk", gpu.get("clock_mem", 0), " MHz")
@@ -577,7 +646,8 @@ class TelemetryDashboard:
         
         # RAM
         ram = data.get("ram", {})
-        self._update_value(self.ram_panel, "percent", "Uso", ram.get("percent", 0), "%", 70, 90)
+        self._update_value(self.ram_panel, "percent", "Uso", ram.get("percent", 0), "%", 
+                          alertas.get("ram_warning", 70), alertas.get("ram_critical", 90))
         self._update_value(self.ram_panel, "used", "Usado", ram.get("used_gb", 0), " GB")
         self._update_value(self.ram_panel, "total", "Total", ram.get("total_gb", 0), " GB")
         
@@ -601,9 +671,11 @@ class TelemetryDashboard:
                 disk = storage[i]
                 name = disk.get("name", f"Disk {i}")[:15]
                 self._update_value(self.storage_panel, f"disk{i}_name", f"Disco {i+1}", name, "")
-                self._update_value(self.storage_panel, f"disk{i}_temp", "  Temp", disk.get("temp", 0), "°C", 45, 55)
+                self._update_value(self.storage_panel, f"disk{i}_temp", "  Temp", disk.get("temp", 0), "°C", 
+                                  alertas.get("storage_temp_warning", 45), alertas.get("storage_temp_critical", 55))
                 self._update_value(self.storage_panel, f"disk{i}_health", "  Saúde", disk.get("health", 100), "%")
-                self._update_value(self.storage_panel, f"disk{i}_used", "  Usado", disk.get("used_space", 0), "%", 80, 95)
+                self._update_value(self.storage_panel, f"disk{i}_used", "  Usado", disk.get("used_space", 0), "%", 
+                                  alertas.get("storage_uso_warning", 80), alertas.get("storage_uso_critical", 95))
             else:
                 # Limpa dados de disco não existente
                 self._update_value(self.storage_panel, f"disk{i}_name", f"Disco {i+1}", "-", "")
@@ -615,7 +687,8 @@ class TelemetryDashboard:
         net = data.get("network", {})
         self._update_value(self.network_panel, "down", "Download", net.get("down_kbps", 0), " KB/s")
         self._update_value(self.network_panel, "up", "Upload", net.get("up_kbps", 0), " KB/s")
-        self._update_value(self.network_panel, "ping", "Ping", net.get("ping_ms", 0), " ms", 50, 100)
+        self._update_value(self.network_panel, "ping", "Ping", net.get("ping_ms", 0), " ms", 
+                          alertas.get("ping_warning", 50), alertas.get("ping_critical", 100))
         
         # Link Speed com verificação de saúde baseada na velocidade esperada
         link_speed = net.get("link_speed_mbps", 0)
@@ -744,10 +817,14 @@ class TelemetryDashboard:
                 pass
     
     def _show_ip_config(self, event=None):
-        """Mostra janela de configuração de IP do sender."""
+        """Mostra janela de configuração de IP do sender - LEGACY, redireciona para config geral."""
+        self._show_settings(event)
+    
+    def _show_settings(self, event=None):
+        """Mostra janela de configurações gerais com abas."""
         config_window = tk.Toplevel(self.root)
-        config_window.title("Configuração de Conexão")
-        config_window.geometry("420x380")
+        config_window.title("⚙️ Configurações Gerais")
+        config_window.geometry("600x650")
         config_window.resizable(False, False)
         config_window.configure(bg=self.colors["bg"])
         config_window.transient(self.root)
@@ -755,204 +832,73 @@ class TelemetryDashboard:
         
         # Centralizar na tela
         config_window.update_idletasks()
-        x = (config_window.winfo_screenwidth() // 2) - 210
-        y = (config_window.winfo_screenheight() // 2) - 190
+        x = (config_window.winfo_screenwidth() // 2) - 300
+        y = (config_window.winfo_screenheight() // 2) - 325
         config_window.geometry(f"+{x}+{y}")
         
         # Título
         title = tk.Label(
             config_window,
-            text="🔧 Configuração de Conexão",
+            text="⚙️ Configurações Gerais",
             font=self.font_section,
             fg=self.colors["title"],
             bg=self.colors["bg"]
         )
-        title.pack(pady=15)
+        title.pack(pady=10)
         
-        # Frame principal
-        main_frame = tk.Frame(config_window, bg=self.colors["bg"])
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20)
+        # Notebook (abas) com estilo customizado
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure('Custom.TNotebook', background=self.colors["bg"], borderwidth=0)
+        style.configure('Custom.TNotebook.Tab', 
+                       background=self.colors["panel"], 
+                       foreground=self.colors["text"],
+                       padding=[15, 8],
+                       font=('Consolas', 9))
+        style.map('Custom.TNotebook.Tab',
+                 background=[('selected', self.colors["cpu"])],
+                 foreground=[('selected', '#000000')])
         
-        # Modo de conexão
-        mode_frame = tk.Frame(main_frame, bg=self.colors["bg"])
-        mode_frame.pack(fill=tk.X, pady=10)
+        notebook = ttk.Notebook(config_window, style='Custom.TNotebook')
+        notebook.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
         
-        mode_label = tk.Label(
-            mode_frame,
-            text="Modo de Conexão:",
-            font=self.font_small,
-            fg=self.colors["text"],
-            bg=self.colors["bg"]
-        )
-        mode_label.pack(anchor="w")
+        # === ABA 1: CONEXÃO ===
+        tab_conexao = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(tab_conexao, text="📡 Conexão")
+        self._create_connection_tab(tab_conexao)
         
-        mode_var = tk.StringVar(value="manual" if self.sender_ip else "auto")
+        # === ABA 2: APARÊNCIA ===
+        tab_aparencia = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(tab_aparencia, text="🎨 Aparência")
+        self._create_appearance_tab(tab_aparencia)
         
-        auto_radio = tk.Radiobutton(
-            mode_frame,
-            text="Automático (Broadcast UDP)",
-            variable=mode_var,
-            value="auto",
-            font=self.font_small,
-            fg=self.colors["text"],
-            bg=self.colors["bg"],
-            selectcolor=self.colors["panel"],
-            activebackground=self.colors["bg"],
-            activeforeground=self.colors["text"]
-        )
-        auto_radio.pack(anchor="w", padx=10)
+        # === ABA 3: ALERTAS ===
+        tab_alertas = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(tab_alertas, text="🔔 Alertas")
+        self._create_alerts_tab(tab_alertas)
         
-        manual_radio = tk.Radiobutton(
-            mode_frame,
-            text="Manual (Inserir IP)",
-            variable=mode_var,
-            value="manual",
-            font=self.font_small,
-            fg=self.colors["text"],
-            bg=self.colors["bg"],
-            selectcolor=self.colors["panel"],
-            activebackground=self.colors["bg"],
-            activeforeground=self.colors["text"]
-        )
-        manual_radio.pack(anchor="w", padx=10)
+        # === ABA 4: NOTIFICAÇÕES ===
+        tab_notif = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(tab_notif, text="📱 Notificações")
+        self._create_notifications_tab(tab_notif)
         
-        # IP do Sender
-        ip_frame = tk.Frame(main_frame, bg=self.colors["bg"])
-        ip_frame.pack(fill=tk.X, pady=10)
+        # === ABA 5: HISTÓRICO ===
+        tab_historico = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(tab_historico, text="📊 Histórico")
+        self._create_history_tab(tab_historico)
         
-        ip_label = tk.Label(
-            ip_frame,
-            text="IP do Sender (PC):",
-            font=self.font_small,
-            fg=self.colors["text"],
-            bg=self.colors["bg"]
-        )
-        ip_label.pack(anchor="w")
-        
-        ip_entry = tk.Entry(
-            ip_frame,
-            font=self.font_value,
-            bg=self.colors["panel"],
-            fg=self.colors["text"],
-            insertbackground=self.colors["text"],
-            relief="flat",
-            width=20
-        )
-        ip_entry.pack(fill=tk.X, pady=5, ipady=5)
-        ip_entry.insert(0, self.sender_ip or "192.168.1.100")
-        
-        # Porta
-        port_frame = tk.Frame(main_frame, bg=self.colors["bg"])
-        port_frame.pack(fill=tk.X, pady=5)
-        
-        port_label = tk.Label(
-            port_frame,
-            text="Porta UDP:",
-            font=self.font_small,
-            fg=self.colors["text"],
-            bg=self.colors["bg"]
-        )
-        port_label.pack(anchor="w")
-        
-        port_entry = tk.Entry(
-            port_frame,
-            font=self.font_value,
-            bg=self.colors["panel"],
-            fg=self.colors["text"],
-            insertbackground=self.colors["text"],
-            relief="flat",
-            width=10
-        )
-        port_entry.pack(anchor="w", pady=5, ipady=5)
-        port_entry.insert(0, str(self.porta))
-        
-        # Dica
-        tip_label = tk.Label(
-            port_frame,
-            text="Dica: No PC, execute 'ipconfig' para ver o IP local",
-            font=self.font_help,
-            fg=self.colors["dim"],
-            bg=self.colors["bg"]
-        )
-        tip_label.pack(anchor="w")
-        
-        # Status atual
-        status_frame = tk.Frame(main_frame, bg=self.colors["bg"])
-        status_frame.pack(fill=tk.X, pady=5)
-        
-        current_mode = "Manual" if self.sender_ip else "Automático"
-        current_ip = self.sender_ip or "(broadcast)"
-        status_text = f"Atual: {current_mode} - {current_ip}:{self.porta}"
-        
-        status_label = tk.Label(
-            status_frame,
-            text=status_text,
+        # Status e Botões
+        self.settings_status = tk.Label(
+            config_window,
+            text="",
             font=self.font_small,
             fg=self.colors["dim"],
             bg=self.colors["bg"]
         )
-        status_label.pack(anchor="w")
+        self.settings_status.pack(pady=5)
         
-        # Botões
         btn_frame = tk.Frame(config_window, bg=self.colors["bg"])
-        btn_frame.pack(fill=tk.X, padx=20, pady=15)
-        
-        def apply_config():
-            mode = mode_var.get()
-            ip = ip_entry.get().strip()
-            port_str = port_entry.get().strip()
-            
-            # Validar porta
-            try:
-                port = int(port_str)
-                if port < 1 or port > 65535:
-                    raise ValueError
-            except:
-                status_label.configure(text="❌ Porta inválida (1-65535)!", fg=self.colors["critical"])
-                return
-            
-            if mode == "manual":
-                # Validar IP
-                parts = ip.split(".")
-                if len(parts) != 4:
-                    status_label.configure(text="❌ IP inválido!", fg=self.colors["critical"])
-                    return
-                try:
-                    for part in parts:
-                        n = int(part)
-                        if n < 0 or n > 255:
-                            raise ValueError
-                except:
-                    status_label.configure(text="❌ IP inválido!", fg=self.colors["critical"])
-                    return
-                
-                self.sender_ip = ip
-                self.connection_mode = "manual"
-            else:
-                self.sender_ip = ""
-                self.connection_mode = "auto"
-            
-            self.porta = port
-            
-            # Salvar configuração
-            config = {
-                "porta": self.porta,
-                "sender_ip": self.sender_ip,
-                "modo": self.connection_mode
-            }
-            salvar_config(config)
-            
-            # Sinalizar para reiniciar o receiver
-            self.restart_receiver = True
-            
-            status_label.configure(
-                text=f"✓ Configuração aplicada! Reconectando...", 
-                fg=self.colors["gpu"]
-            )
-            config_window.after(1000, config_window.destroy)
-        
-        def cancel():
-            config_window.destroy()
+        btn_frame.pack(fill=tk.X, padx=20, pady=10)
         
         cancel_btn = tk.Button(
             btn_frame,
@@ -961,32 +907,529 @@ class TelemetryDashboard:
             bg=self.colors["panel"],
             fg=self.colors["text"],
             relief="flat",
-            padx=15,
-            pady=5,
-            command=cancel
+            padx=20,
+            pady=8,
+            command=config_window.destroy
         )
         cancel_btn.pack(side=tk.LEFT)
         
         apply_btn = tk.Button(
             btn_frame,
-            text="Aplicar",
+            text="💾 Salvar Configurações",
             font=self.font_small,
             bg=self.colors["cpu"],
             fg="#000000",
             relief="flat",
-            padx=15,
-            pady=5,
-            command=apply_config
+            padx=20,
+            pady=8,
+            command=lambda: self._save_all_settings(config_window)
         )
         apply_btn.pack(side=tk.RIGHT)
         
-        # Bind Enter para aplicar
-        config_window.bind('<Return>', lambda e: apply_config())
-        config_window.bind('<Escape>', lambda e: cancel())
+        # Guardar referência da janela
+        self.config_window = config_window
         
-        # Foco no campo de IP
-        ip_entry.focus_set()
-        ip_entry.select_range(0, tk.END)
+        # Binds
+        config_window.bind('<Escape>', lambda e: config_window.destroy())
+    
+    def _create_connection_tab(self, parent):
+        """Cria aba de configurações de conexão."""
+        frame = tk.Frame(parent, bg=self.colors["bg"])
+        frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
+        
+        # Modo de conexão
+        mode_label = tk.Label(frame, text="Modo de Conexão:", font=self.font_small,
+                             fg=self.colors["text"], bg=self.colors["bg"])
+        mode_label.pack(anchor="w", pady=(0, 5))
+        
+        self.settings_mode_var = tk.StringVar(value="manual" if self.sender_ip else "auto")
+        
+        auto_radio = tk.Radiobutton(frame, text="🔍 Automático (Broadcast UDP - Auto-discovery)",
+                                    variable=self.settings_mode_var, value="auto",
+                                    font=self.font_small, fg=self.colors["text"], bg=self.colors["bg"],
+                                    selectcolor=self.colors["panel"])
+        auto_radio.pack(anchor="w", padx=10)
+        
+        manual_radio = tk.Radiobutton(frame, text="📍 Manual (Inserir IP específico)",
+                                      variable=self.settings_mode_var, value="manual",
+                                      font=self.font_small, fg=self.colors["text"], bg=self.colors["bg"],
+                                      selectcolor=self.colors["panel"])
+        manual_radio.pack(anchor="w", padx=10)
+        
+        # IP do Sender
+        ip_label = tk.Label(frame, text="IP do Sender (PC):", font=self.font_small,
+                           fg=self.colors["text"], bg=self.colors["bg"])
+        ip_label.pack(anchor="w", pady=(15, 5))
+        
+        self.settings_ip_entry = tk.Entry(frame, font=self.font_value, bg=self.colors["panel"],
+                                         fg=self.colors["text"], insertbackground=self.colors["text"],
+                                         relief="flat", width=25)
+        self.settings_ip_entry.pack(anchor="w", pady=2, ipady=5)
+        self.settings_ip_entry.insert(0, self.sender_ip or "192.168.1.100")
+        
+        # Porta
+        port_label = tk.Label(frame, text="Porta UDP:", font=self.font_small,
+                             fg=self.colors["text"], bg=self.colors["bg"])
+        port_label.pack(anchor="w", pady=(15, 5))
+        
+        self.settings_port_entry = tk.Entry(frame, font=self.font_value, bg=self.colors["panel"],
+                                           fg=self.colors["text"], insertbackground=self.colors["text"],
+                                           relief="flat", width=10)
+        self.settings_port_entry.pack(anchor="w", pady=2, ipady=5)
+        self.settings_port_entry.insert(0, str(self.porta))
+        
+        # Velocidade esperada do link
+        speed_label = tk.Label(frame, text="Velocidade esperada do cabo (Mbps):", font=self.font_small,
+                              fg=self.colors["text"], bg=self.colors["bg"])
+        speed_label.pack(anchor="w", pady=(15, 5))
+        
+        speed_frame = tk.Frame(frame, bg=self.colors["bg"])
+        speed_frame.pack(anchor="w")
+        
+        self.settings_speed_var = tk.StringVar(value=str(CONFIG.get("expected_link_speed_mbps", 1000)))
+        
+        speeds = [("CAT5 (100)", "100"), ("CAT5e/6 (1000)", "1000"), ("CAT6a/7 (10000)", "10000")]
+        for text, val in speeds:
+            rb = tk.Radiobutton(speed_frame, text=text, variable=self.settings_speed_var, value=val,
+                               font=self.font_small, fg=self.colors["text"], bg=self.colors["bg"],
+                               selectcolor=self.colors["panel"])
+            rb.pack(side=tk.LEFT, padx=5)
+        
+        # Dica
+        tip_label = tk.Label(frame, text="💡 Dica: No PC, execute 'ipconfig' para ver o IP local",
+                            font=self.font_help, fg=self.colors["dim"], bg=self.colors["bg"])
+        tip_label.pack(anchor="w", pady=(20, 0))
+    
+    def _create_appearance_tab(self, parent):
+        """Cria aba de configurações de aparência."""
+        frame = tk.Frame(parent, bg=self.colors["bg"])
+        frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
+        
+        # Tema
+        theme_label = tk.Label(frame, text="Tema:", font=self.font_small,
+                              fg=self.colors["text"], bg=self.colors["bg"])
+        theme_label.pack(anchor="w", pady=(0, 5))
+        
+        theme_names = ["dark", "light", "high_contrast", "cyberpunk"]
+        self.settings_theme_var = tk.StringVar(value=CONFIG.get("tema", "dark"))
+        
+        theme_frame = tk.Frame(frame, bg=self.colors["bg"])
+        theme_frame.pack(anchor="w", pady=5)
+        
+        for theme_name in theme_names:
+            display = {"dark": "🌙 Escuro", "light": "☀️ Claro", 
+                      "high_contrast": "⚫ Alto Contraste", "cyberpunk": "💜 Cyberpunk"}
+            rb = tk.Radiobutton(theme_frame, text=display.get(theme_name, theme_name),
+                               variable=self.settings_theme_var, value=theme_name,
+                               font=self.font_small, fg=self.colors["text"], bg=self.colors["bg"],
+                               selectcolor=self.colors["panel"])
+            rb.pack(anchor="w", padx=10)
+        
+        # Cores customizadas por setor
+        colors_label = tk.Label(frame, text="Cores Customizadas (deixe vazio para usar tema):",
+                               font=self.font_small, fg=self.colors["text"], bg=self.colors["bg"])
+        colors_label.pack(anchor="w", pady=(20, 5))
+        
+        cores_config = CONFIG.get("cores_customizadas", {})
+        self.settings_colors = {}
+        
+        colors_frame = tk.Frame(frame, bg=self.colors["bg"])
+        colors_frame.pack(anchor="w", fill=tk.X)
+        
+        setores = [("cpu", "CPU"), ("gpu", "GPU"), ("ram", "RAM"), 
+                   ("storage", "Storage"), ("network", "Network"), ("mobo", "Mobo")]
+        
+        for i, (key, label) in enumerate(setores):
+            row = tk.Frame(colors_frame, bg=self.colors["bg"])
+            row.pack(fill=tk.X, pady=2)
+            
+            lbl = tk.Label(row, text=f"{label}:", font=self.font_small,
+                          fg=self.colors["dim"], bg=self.colors["bg"], width=10, anchor="w")
+            lbl.pack(side=tk.LEFT)
+            
+            entry = tk.Entry(row, font=self.font_small, bg=self.colors["panel"],
+                           fg=self.colors["text"], insertbackground=self.colors["text"],
+                           relief="flat", width=12)
+            entry.pack(side=tk.LEFT, padx=5)
+            entry.insert(0, cores_config.get(key, ""))
+            self.settings_colors[key] = entry
+            
+            # Preview de cor
+            preview = tk.Label(row, text="  ██  ", font=self.font_small,
+                              fg=self.colors.get(key, "#ffffff"), bg=self.colors["bg"])
+            preview.pack(side=tk.LEFT, padx=5)
+        
+        tip_label = tk.Label(frame, text="💡 Use códigos hex como #00ff00 ou #ff6600",
+                            font=self.font_help, fg=self.colors["dim"], bg=self.colors["bg"])
+        tip_label.pack(anchor="w", pady=(10, 0))
+    
+    def _create_alerts_tab(self, parent):
+        """Cria aba de configurações de alertas/thresholds."""
+        # Canvas com scroll para muitas opções
+        canvas = tk.Canvas(parent, bg=self.colors["bg"], highlightthickness=0)
+        scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg=self.colors["bg"])
+        
+        scroll_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True, padx=15, pady=10)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Bind mousewheel
+        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        
+        alertas_config = CONFIG.get("alertas", {})
+        self.settings_alerts = {}
+        
+        # CPU
+        self._create_threshold_group(scroll_frame, "🔥 CPU", [
+            ("cpu_temp_warning", "Temp Aviso (°C)", alertas_config.get("cpu_temp_warning", 70)),
+            ("cpu_temp_critical", "Temp Crítico (°C)", alertas_config.get("cpu_temp_critical", 85)),
+            ("cpu_uso_warning", "Uso Aviso (%)", alertas_config.get("cpu_uso_warning", 70)),
+            ("cpu_uso_critical", "Uso Crítico (%)", alertas_config.get("cpu_uso_critical", 90)),
+        ])
+        
+        # GPU
+        self._create_threshold_group(scroll_frame, "🎮 GPU", [
+            ("gpu_temp_warning", "Temp Aviso (°C)", alertas_config.get("gpu_temp_warning", 75)),
+            ("gpu_temp_critical", "Temp Crítico (°C)", alertas_config.get("gpu_temp_critical", 90)),
+            ("gpu_uso_warning", "Uso Aviso (%)", alertas_config.get("gpu_uso_warning", 80)),
+            ("gpu_uso_critical", "Uso Crítico (%)", alertas_config.get("gpu_uso_critical", 95)),
+        ])
+        
+        # RAM
+        self._create_threshold_group(scroll_frame, "💾 RAM", [
+            ("ram_warning", "Uso Aviso (%)", alertas_config.get("ram_warning", 70)),
+            ("ram_critical", "Uso Crítico (%)", alertas_config.get("ram_critical", 90)),
+        ])
+        
+        # Storage
+        self._create_threshold_group(scroll_frame, "💿 Storage", [
+            ("storage_temp_warning", "Temp Aviso (°C)", alertas_config.get("storage_temp_warning", 45)),
+            ("storage_temp_critical", "Temp Crítico (°C)", alertas_config.get("storage_temp_critical", 55)),
+            ("storage_uso_warning", "Uso Aviso (%)", alertas_config.get("storage_uso_warning", 80)),
+            ("storage_uso_critical", "Uso Crítico (%)", alertas_config.get("storage_uso_critical", 95)),
+        ])
+        
+        # Network
+        self._create_threshold_group(scroll_frame, "🌐 Network", [
+            ("ping_warning", "Ping Aviso (ms)", alertas_config.get("ping_warning", 50)),
+            ("ping_critical", "Ping Crítico (ms)", alertas_config.get("ping_critical", 100)),
+        ])
+        
+        # Sons
+        sons_config = CONFIG.get("sons", {})
+        sons_frame = tk.LabelFrame(scroll_frame, text="🔊 Sons de Alerta", font=self.font_small,
+                                   fg=self.colors["title"], bg=self.colors["bg"], bd=1)
+        sons_frame.pack(fill=tk.X, pady=10)
+        
+        self.settings_sounds_enabled = tk.BooleanVar(value=sons_config.get("enabled", True))
+        sound_check = tk.Checkbutton(sons_frame, text="Ativar sons de alerta",
+                                     variable=self.settings_sounds_enabled,
+                                     font=self.font_small, fg=self.colors["text"], bg=self.colors["bg"],
+                                     selectcolor=self.colors["panel"])
+        sound_check.pack(anchor="w", padx=10, pady=5)
+        
+        cooldown_frame = tk.Frame(sons_frame, bg=self.colors["bg"])
+        cooldown_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Label(cooldown_frame, text="Cooldown (segundos):", font=self.font_small,
+                fg=self.colors["dim"], bg=self.colors["bg"]).pack(side=tk.LEFT)
+        
+        self.settings_sound_cooldown = tk.Entry(cooldown_frame, font=self.font_small,
+                                                bg=self.colors["panel"], fg=self.colors["text"],
+                                                width=8, relief="flat")
+        self.settings_sound_cooldown.pack(side=tk.LEFT, padx=5)
+        self.settings_sound_cooldown.insert(0, str(sons_config.get("cooldown_seconds", 10)))
+    
+    def _create_threshold_group(self, parent, title, fields):
+        """Cria um grupo de thresholds."""
+        frame = tk.LabelFrame(parent, text=title, font=self.font_small,
+                             fg=self.colors["title"], bg=self.colors["bg"], bd=1)
+        frame.pack(fill=tk.X, pady=5)
+        
+        for key, label, default in fields:
+            row = tk.Frame(frame, bg=self.colors["bg"])
+            row.pack(fill=tk.X, padx=10, pady=2)
+            
+            lbl = tk.Label(row, text=f"{label}:", font=self.font_small,
+                          fg=self.colors["dim"], bg=self.colors["bg"], width=20, anchor="w")
+            lbl.pack(side=tk.LEFT)
+            
+            entry = tk.Entry(row, font=self.font_small, bg=self.colors["panel"],
+                           fg=self.colors["text"], width=8, relief="flat")
+            entry.pack(side=tk.LEFT, padx=5)
+            entry.insert(0, str(default))
+            self.settings_alerts[key] = entry
+    
+    def _create_notifications_tab(self, parent):
+        """Cria aba de configurações de notificações/webhooks."""
+        frame = tk.Frame(parent, bg=self.colors["bg"])
+        frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
+        
+        webhooks_config = CONFIG.get("webhooks", {})
+        
+        # Enable webhooks
+        self.settings_webhooks_enabled = tk.BooleanVar(value=webhooks_config.get("enabled", False))
+        enable_check = tk.Checkbutton(frame, text="🔔 Ativar notificações via webhook",
+                                      variable=self.settings_webhooks_enabled,
+                                      font=self.font_section, fg=self.colors["text"], bg=self.colors["bg"],
+                                      selectcolor=self.colors["panel"])
+        enable_check.pack(anchor="w", pady=(0, 15))
+        
+        # Telegram
+        tg_frame = tk.LabelFrame(frame, text="📱 Telegram", font=self.font_small,
+                                fg=self.colors["title"], bg=self.colors["bg"], bd=1)
+        tg_frame.pack(fill=tk.X, pady=5)
+        
+        tk.Label(tg_frame, text="Bot Token:", font=self.font_small,
+                fg=self.colors["dim"], bg=self.colors["bg"]).pack(anchor="w", padx=10, pady=(5, 0))
+        self.settings_tg_token = tk.Entry(tg_frame, font=self.font_small, bg=self.colors["panel"],
+                                         fg=self.colors["text"], width=45, relief="flat")
+        self.settings_tg_token.pack(anchor="w", padx=10, pady=2)
+        self.settings_tg_token.insert(0, webhooks_config.get("telegram_bot_token", ""))
+        
+        tk.Label(tg_frame, text="Chat ID:", font=self.font_small,
+                fg=self.colors["dim"], bg=self.colors["bg"]).pack(anchor="w", padx=10, pady=(5, 0))
+        self.settings_tg_chat = tk.Entry(tg_frame, font=self.font_small, bg=self.colors["panel"],
+                                        fg=self.colors["text"], width=20, relief="flat")
+        self.settings_tg_chat.pack(anchor="w", padx=10, pady=(2, 10))
+        self.settings_tg_chat.insert(0, webhooks_config.get("telegram_chat_id", ""))
+        
+        # Discord
+        dc_frame = tk.LabelFrame(frame, text="🎮 Discord", font=self.font_small,
+                                fg=self.colors["title"], bg=self.colors["bg"], bd=1)
+        dc_frame.pack(fill=tk.X, pady=5)
+        
+        tk.Label(dc_frame, text="Webhook URL:", font=self.font_small,
+                fg=self.colors["dim"], bg=self.colors["bg"]).pack(anchor="w", padx=10, pady=(5, 0))
+        self.settings_dc_webhook = tk.Entry(dc_frame, font=self.font_small, bg=self.colors["panel"],
+                                           fg=self.colors["text"], width=55, relief="flat")
+        self.settings_dc_webhook.pack(anchor="w", padx=10, pady=(2, 10))
+        self.settings_dc_webhook.insert(0, webhooks_config.get("discord_webhook_url", ""))
+        
+        # ntfy.sh
+        ntfy_frame = tk.LabelFrame(frame, text="📲 ntfy.sh (Push gratuito)", font=self.font_small,
+                                  fg=self.colors["title"], bg=self.colors["bg"], bd=1)
+        ntfy_frame.pack(fill=tk.X, pady=5)
+        
+        tk.Label(ntfy_frame, text="Topic (ex: meu-pc-telemetria):", font=self.font_small,
+                fg=self.colors["dim"], bg=self.colors["bg"]).pack(anchor="w", padx=10, pady=(5, 0))
+        self.settings_ntfy_topic = tk.Entry(ntfy_frame, font=self.font_small, bg=self.colors["panel"],
+                                           fg=self.colors["text"], width=30, relief="flat")
+        self.settings_ntfy_topic.pack(anchor="w", padx=10, pady=(2, 10))
+        self.settings_ntfy_topic.insert(0, webhooks_config.get("ntfy_topic", ""))
+        
+        # Cooldown
+        cooldown_frame = tk.Frame(frame, bg=self.colors["bg"])
+        cooldown_frame.pack(fill=tk.X, pady=10)
+        
+        tk.Label(cooldown_frame, text="Cooldown entre notificações (segundos):", font=self.font_small,
+                fg=self.colors["dim"], bg=self.colors["bg"]).pack(side=tk.LEFT)
+        
+        self.settings_webhook_cooldown = tk.Entry(cooldown_frame, font=self.font_small,
+                                                  bg=self.colors["panel"], fg=self.colors["text"],
+                                                  width=8, relief="flat")
+        self.settings_webhook_cooldown.pack(side=tk.LEFT, padx=5)
+        self.settings_webhook_cooldown.insert(0, str(webhooks_config.get("cooldown_seconds", 300)))
+        
+        # Dica
+        tip_label = tk.Label(frame, 
+                            text="💡 ntfy.sh: Instale o app no celular e assine seu topic",
+                            font=self.font_help, fg=self.colors["dim"], bg=self.colors["bg"])
+        tip_label.pack(anchor="w", pady=(10, 0))
+    
+    def _create_history_tab(self, parent):
+        """Cria aba de configurações de histórico."""
+        frame = tk.Frame(parent, bg=self.colors["bg"])
+        frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
+        
+        historico_config = CONFIG.get("historico", {})
+        
+        # CSV
+        csv_frame = tk.LabelFrame(frame, text="📄 Log CSV", font=self.font_small,
+                                 fg=self.colors["title"], bg=self.colors["bg"], bd=1)
+        csv_frame.pack(fill=tk.X, pady=10)
+        
+        self.settings_auto_log = tk.BooleanVar(value=historico_config.get("auto_start_log", False))
+        auto_check = tk.Checkbutton(csv_frame, text="Iniciar log automaticamente ao conectar",
+                                    variable=self.settings_auto_log,
+                                    font=self.font_small, fg=self.colors["text"], bg=self.colors["bg"],
+                                    selectcolor=self.colors["panel"])
+        auto_check.pack(anchor="w", padx=10, pady=5)
+        
+        ret_frame = tk.Frame(csv_frame, bg=self.colors["bg"])
+        ret_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Label(ret_frame, text="Retenção (dias):", font=self.font_small,
+                fg=self.colors["dim"], bg=self.colors["bg"]).pack(side=tk.LEFT)
+        
+        self.settings_retention = tk.Entry(ret_frame, font=self.font_small,
+                                          bg=self.colors["panel"], fg=self.colors["text"],
+                                          width=8, relief="flat")
+        self.settings_retention.pack(side=tk.LEFT, padx=5)
+        self.settings_retention.insert(0, str(historico_config.get("retention_days", 7)))
+        
+        # Info sobre log atual
+        log_info = tk.Label(csv_frame, 
+                           text=f"📁 Pasta de logs: {self.log_dir}",
+                           font=self.font_help, fg=self.colors["dim"], bg=self.colors["bg"])
+        log_info.pack(anchor="w", padx=10, pady=5)
+        
+        status_text = "📝 Log ativo" if self.logging_enabled else "⏸️ Log desativado"
+        log_status = tk.Label(csv_frame, text=status_text,
+                             font=self.font_small, 
+                             fg=self.colors["gpu"] if self.logging_enabled else self.colors["dim"],
+                             bg=self.colors["bg"])
+        log_status.pack(anchor="w", padx=10, pady=5)
+        
+        # Atalho
+        tip_label = tk.Label(frame, 
+                            text="💡 Use a tecla [L] para ativar/desativar o log manualmente",
+                            font=self.font_help, fg=self.colors["dim"], bg=self.colors["bg"])
+        tip_label.pack(anchor="w", pady=(20, 0))
+    
+    def _save_all_settings(self, window):
+        """Salva todas as configurações."""
+        try:
+            # === CONEXÃO ===
+            mode = self.settings_mode_var.get()
+            ip = self.settings_ip_entry.get().strip()
+            port_str = self.settings_port_entry.get().strip()
+            speed = self.settings_speed_var.get()
+            
+            # Validar porta
+            try:
+                port = int(port_str)
+                if port < 1 or port > 65535:
+                    raise ValueError
+            except:
+                self.settings_status.config(text="❌ Porta inválida!", fg=self.colors["critical"])
+                return
+            
+            # Validar IP se modo manual
+            if mode == "manual":
+                parts = ip.split(".")
+                if len(parts) != 4:
+                    self.settings_status.config(text="❌ IP inválido!", fg=self.colors["critical"])
+                    return
+                try:
+                    for part in parts:
+                        n = int(part)
+                        if n < 0 or n > 255:
+                            raise ValueError
+                except:
+                    self.settings_status.config(text="❌ IP inválido!", fg=self.colors["critical"])
+                    return
+            
+            # === ALERTAS ===
+            alertas = {}
+            for key, entry in self.settings_alerts.items():
+                try:
+                    alertas[key] = int(entry.get())
+                except:
+                    alertas[key] = 0
+            
+            # === SONS ===
+            try:
+                sound_cooldown = int(self.settings_sound_cooldown.get())
+            except:
+                sound_cooldown = 10
+            
+            # === WEBHOOKS ===
+            try:
+                webhook_cooldown = int(self.settings_webhook_cooldown.get())
+            except:
+                webhook_cooldown = 300
+            
+            # === HISTÓRICO ===
+            try:
+                retention = int(self.settings_retention.get())
+            except:
+                retention = 7
+            
+            # === CORES CUSTOMIZADAS ===
+            cores = {}
+            for key, entry in self.settings_colors.items():
+                cores[key] = entry.get().strip()
+            
+            # Montar config completa
+            new_config = {
+                "porta": port,
+                "sender_ip": ip if mode == "manual" else "",
+                "modo": mode,
+                "expected_link_speed_mbps": int(speed),
+                "tema": self.settings_theme_var.get(),
+                "cores_customizadas": cores,
+                "alertas": alertas,
+                "sons": {
+                    "enabled": self.settings_sounds_enabled.get(),
+                    "cooldown_seconds": sound_cooldown,
+                    "warning_sound": "warning",
+                    "critical_sound": "beep_urgent"
+                },
+                "webhooks": {
+                    "enabled": self.settings_webhooks_enabled.get(),
+                    "telegram_bot_token": self.settings_tg_token.get().strip(),
+                    "telegram_chat_id": self.settings_tg_chat.get().strip(),
+                    "discord_webhook_url": self.settings_dc_webhook.get().strip(),
+                    "ntfy_topic": self.settings_ntfy_topic.get().strip(),
+                    "ntfy_server": "https://ntfy.sh",
+                    "cooldown_seconds": webhook_cooldown
+                },
+                "historico": {
+                    "csv_enabled": self.logging_enabled,
+                    "auto_start_log": self.settings_auto_log.get(),
+                    "retention_days": retention
+                }
+            }
+            
+            # Atualizar CONFIG global
+            global CONFIG
+            CONFIG.update(new_config)
+            
+            # Salvar em arquivo
+            if salvar_config(new_config):
+                # Aplicar mudanças
+                self.sender_ip = new_config["sender_ip"]
+                self.connection_mode = mode
+                self.porta = port
+                
+                # Aplicar tema
+                self._apply_new_theme(new_config["tema"], new_config["cores_customizadas"])
+                
+                # Sinalizar reinício do receiver se porta/IP mudou
+                self.restart_receiver = True
+                
+                self.settings_status.config(text="✅ Configurações salvas!", fg=self.colors["gpu"])
+                window.after(1500, window.destroy)
+            else:
+                self.settings_status.config(text="❌ Erro ao salvar!", fg=self.colors["critical"])
+        
+        except Exception as e:
+            self.settings_status.config(text=f"❌ Erro: {str(e)[:30]}", fg=self.colors["critical"])
+            print(f"[Config] Erro ao salvar: {e}")
+    
+    def _apply_new_theme(self, theme_name, custom_colors):
+        """Aplica novo tema e cores customizadas."""
+        if HAS_THEME_MODULE:
+            from ui.themes import get_theme
+            theme = get_theme(theme_name)
+            new_colors = theme.to_dict()
+        else:
+            # Fallback para temas inline
+            new_colors = self.themes.get(theme_name, self.themes["dark"]).copy()
+        
+        # Aplicar cores customizadas
+        for key, color in custom_colors.items():
+            if color and color.startswith("#"):
+                new_colors[key] = color
+        
+        self.colors = new_colors
+        self.dark_theme = theme_name in ["dark", "cyberpunk", "high_contrast"]
+        self._apply_theme()
     
     def _toggle_logging(self, event=None):
         """Ativa/desativa log CSV."""
@@ -1033,7 +1476,7 @@ def main():
         print(f"Modo: Manual - IP do Sender: {sender_ip}")
     else:
         print("Modo: Automático (broadcast UDP)")
-    print("Atalhos: [F]ullscreen [G]ráficos [T]ema [L]og [I]P Config [Q]uit")
+    print("Atalhos: [F]ullscreen [G]ráficos [T]ema [L]og [S]ettings [Q]uit")
     print("=" * 50)
     print()
     

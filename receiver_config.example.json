@@ -1,0 +1,60 @@
+{
+    "_comentario": "Arquivo de exemplo de configuração do Receiver - Copie para receiver_config.json",
+    
+    "porta": 5005,
+    "sender_ip": "",
+    "modo": "auto",
+    "expected_link_speed_mbps": 1000,
+    
+    "tema": "dark",
+    "cores_customizadas": {
+        "cpu": "",
+        "gpu": "",
+        "ram": "",
+        "storage": "",
+        "network": "",
+        "mobo": ""
+    },
+    
+    "alertas": {
+        "cpu_temp_warning": 70,
+        "cpu_temp_critical": 85,
+        "cpu_uso_warning": 70,
+        "cpu_uso_critical": 90,
+        "gpu_temp_warning": 75,
+        "gpu_temp_critical": 90,
+        "gpu_uso_warning": 80,
+        "gpu_uso_critical": 95,
+        "ram_warning": 70,
+        "ram_critical": 90,
+        "storage_temp_warning": 45,
+        "storage_temp_critical": 55,
+        "storage_uso_warning": 80,
+        "storage_uso_critical": 95,
+        "ping_warning": 50,
+        "ping_critical": 100
+    },
+    
+    "sons": {
+        "enabled": true,
+        "cooldown_seconds": 10,
+        "warning_sound": "warning",
+        "critical_sound": "beep_urgent"
+    },
+    
+    "webhooks": {
+        "enabled": false,
+        "telegram_bot_token": "",
+        "telegram_chat_id": "",
+        "discord_webhook_url": "",
+        "ntfy_topic": "",
+        "ntfy_server": "https://ntfy.sh",
+        "cooldown_seconds": 300
+    },
+    
+    "historico": {
+        "csv_enabled": false,
+        "auto_start_log": false,
+        "retention_days": 7
+    }
+}

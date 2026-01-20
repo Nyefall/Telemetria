@@ -104,10 +104,61 @@ Edite `config.json`:
 - `modo`: "broadcast" (auto) ou "unicast" (IP fixo)
 
 ### Receiver (Notebook)
-Pressione `I` na interface para configurar:
-- Modo: Automático (broadcast) ou Manual (IP fixo)
-- IP do Sender
-- Porta UDP
+Pressione `S` na interface para abrir as **Configurações Gerais**, ou edite `receiver_config.json`:
+
+```json
+{
+    "porta": 5005,
+    "sender_ip": "",
+    "modo": "auto",
+    "expected_link_speed_mbps": 1000,
+    
+    "tema": "dark",
+    "cores_customizadas": {
+        "cpu": "#00ff88",
+        "gpu": "",
+        "ram": "#ffa500"
+    },
+    
+    "alertas": {
+        "cpu_temp_warning": 70,
+        "cpu_temp_critical": 85,
+        "gpu_temp_warning": 75,
+        "gpu_temp_critical": 90
+    },
+    
+    "webhooks": {
+        "enabled": true,
+        "telegram_bot_token": "123:ABC...",
+        "telegram_chat_id": "987654321",
+        "discord_webhook_url": "",
+        "ntfy_topic": "meu-pc-telemetria"
+    },
+    
+    "sons": {
+        "enabled": true,
+        "cooldown_seconds": 10
+    }
+}
+```
+
+#### Opções de Configuração do Receiver
+
+| Categoria | Opção | Descrição |
+|-----------|-------|-----------|
+| **Conexão** | `modo` | `auto` (broadcast) ou `manual` (IP fixo) |
+| | `sender_ip` | IP do PC sender (vazio para broadcast) |
+| | `porta` | Porta UDP (padrão: 5005) |
+| **Aparência** | `tema` | `dark`, `light`, `high_contrast`, `cyberpunk` |
+| | `cores_customizadas` | Cores hex por setor (ex: `#00ff88`) |
+| **Alertas** | `cpu_temp_warning/critical` | Thresholds de temperatura CPU |
+| | `gpu_temp_warning/critical` | Thresholds de temperatura GPU |
+| | `ram_warning/critical` | Thresholds de uso RAM |
+| **Sons** | `enabled` | Ativar sons de alerta |
+| | `cooldown_seconds` | Intervalo mínimo entre sons |
+| **Webhooks** | `telegram_bot_token` | Token do bot Telegram |
+| | `discord_webhook_url` | URL do webhook Discord |
+| | `ntfy_topic` | Topic do ntfy.sh (push gratuito) |
 
 ## ⌨️ Atalhos do Receiver
 
@@ -117,7 +168,8 @@ Pressione `I` na interface para configurar:
 | `G` | Mostrar/ocultar gráficos |
 | `T` | Alternar tema (escuro/claro) |
 | `L` | Ativar/desativar log CSV |
-| `I` | Configurar IP/Porta |
+| `S` | ⚙️ **Configurações Gerais** (Conexão, Aparência, Alertas, Notificações) |
+| `I` | Configurar IP/Porta (atalho para configurações) |
 | `Q` / `ESC` | Sair |
 
 ## 🔧 Build do Executável

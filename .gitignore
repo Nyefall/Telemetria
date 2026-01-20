@@ -53,3 +53,8 @@ README.old.md
 # Windows
 Thumbs.db
 *.tmp
+
+# Release archives (usar GitHub Releases)
+*.zip
+*.tar.gz
+Telemetria-*.zip

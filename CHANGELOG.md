@@ -1,6 +1,40 @@
 # Changelog - Sistema de Telemetria
 
-## v2.0 - Janeiro 2026 - Executável Unificado
+## v1.2.0 - Janeiro 2026 - Configurações Gerais
+
+### 🎯 Mudanças Principais
+
+**Configurações Gerais (Receiver)**
+- ✨ **NOVO**: Painel de configurações com abas (tecla `S`)
+- 🎨 **Aba Aparência**: 4 temas (Dark, Light, High Contrast, Cyberpunk) + cores customizadas por setor
+- 🔔 **Aba Alertas**: Thresholds personalizáveis para temperatura/uso de CPU, GPU, RAM, Storage, Ping
+- 📱 **Aba Notificações**: Integração com Telegram, Discord e ntfy.sh (push gratuito)
+- 📊 **Aba Histórico**: Configuração de log CSV e retenção
+
+**Alertas e Notificações**
+- ✨ Thresholds de aviso e crítico configuráveis por métrica
+- ✨ Cooldown configurável para sons e webhooks
+- ✨ Suporte a ntfy.sh para notificações push gratuitas no celular
+
+**Aparência**
+- ✨ Novos temas: High Contrast (acessibilidade) e Cyberpunk
+- ✨ Cores personalizáveis por setor (CPU, GPU, RAM, etc.) via código hex
+- 🎨 Temas salvos persistentemente em `receiver_config.json`
+
+**Arquivos**
+- ✨ **NOVO**: `receiver_config.example.json` - exemplo de configuração
+- 📝 Estrutura expandida do `receiver_config.json` com todas as opções
+
+### ⌨️ Novos Atalhos
+
+| Tecla | Função |
+|-------|--------|
+| `S` | ⚙️ Configurações Gerais (novo!) |
+| `I` | Agora abre Configurações Gerais (mantido para compatibilidade) |
+
+---
+
+## v1.1.0 - Janeiro 2026 - Executável Unificado
 
 ### 🎯 Mudanças Principais
 
@@ -33,15 +67,15 @@
 
 ### 📊 Comparação de Versões
 
-| Aspecto | v1.0 (Legado) | v2.0 (Unificado) |
-|---------|---------------|------------------|
+| Aspecto | v1.0.0 (Legado) | v1.1.0 (Unificado) |
+|---------|-----------------|---------------------|
 | Executáveis | 2 arquivos separados | 1 arquivo único |
 | Tamanho Total | 51 MB | 29 MB |
 | Seleção de Modo | Manual (2 .exe) | Interface gráfica |
 | Distribuição | Copiar 2 arquivos | Copiar 1 arquivo |
 | Experiência | Técnica | User-friendly |
 
-### 🔄 Migração de v1.0 para v2.0
+### 🔄 Migração de v1.0.0 para v1.1.0
 
 **Usuários finais:**
 - Substituir `TelemetriaSender.exe` e `TelemetriaReceiver.exe` por `Telemetria.exe`
@@ -71,7 +105,7 @@ dist/
 
 ---
 
-## v1.0 - Janeiro 2026 - Release Inicial
+## v1.0.0 - Janeiro 2026 - Release Inicial
 
 ### Funcionalidades
 
@@ -111,17 +145,17 @@ dist/
 
 ## Roadmap Futuro
 
-### v2.1 (Próxima)
+### v1.3.0 (Próxima)
 - [ ] Adicionar ícone personalizado ao executável
-- [ ] Configuração de porta UDP via interface
+- [ ] Interface Web (Flask/FastAPI) para acesso via navegador
 - [ ] Histórico de conexões no receiver
-- [ ] Alertas configuráveis (temperatura, uso CPU)
+- [ ] Suporte a múltiplos senders
 
-### v3.0 (Futuro)
-- [ ] Suporte para múltiplos senders em um receiver
+### v2.0.0 (Futuro)
 - [ ] Gráficos históricos (últimos 5 min, 1h, etc)
 - [ ] Export de relatórios em PDF
 - [ ] Modo de economia de energia
+- [ ] SQLite para histórico persistente
 
 ### Ideias em Análise
 - [ ] Suporte para Linux (se LibreHardwareMonitor disponibilizar)
