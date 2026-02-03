@@ -150,6 +150,10 @@ python scripts/build_unified.py
 
 MIT License - veja [LICENSE](LICENSE) para detalhes.
 
+### Aviso de Terceiros
+
+Este software utiliza a biblioteca [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), licenciada sob a [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/).
+
 ## 👤 Autor
 
 [@Nyefall](https://github.com/Nyefall)
