@@ -1,51 +1,51 @@
-# 📡 Sistema de Telemetria de Hardware
+# 📡 Hardware Telemetry System
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Sistema de monitoramento em tempo real de hardware via rede local. Coleta métricas de CPU, GPU, RAM e Storage de um PC e transmite via UDP para visualização em outros dispositivos.
+Real-time hardware monitoring system over local network. Collects CPU, GPU, RAM, and Storage metrics from a PC and transmits them via UDP for visualization on other devices.
 
-## 🎯 O Que o Projeto Faz
+## 🎯 What This Project Does
 
 ```
 ┌─────────────────┐         UDP          ┌─────────────────┐
-│   PC GAMER      │  ───────────────────▶│   NOTEBOOK      │
-│   (Sender)      │    porta 5005        │   (Receiver)    │
+│   GAMING PC     │  ───────────────────▶│    LAPTOP       │
+│   (Sender)      │     port 5005        │   (Receiver)    │
 │                 │                      │                 │
 │ • CPU 65°C      │                      │ • Dashboard     │
-│ • GPU 72°C      │                      │ • Gráficos      │
-│ • RAM 68%       │                      │ • Alertas       │
+│ • GPU 72°C      │                      │ • Graphs        │
+│ • RAM 68%       │                      │ • Alerts        │
 └─────────────────┘                      └─────────────────┘
 ```
 
-**Principais recursos:**
-- Monitoramento em tempo real de CPU, GPU, RAM, Storage e Rede
-- Interface gráfica desktop (Tkinter) e web (FastAPI)
-- Alertas via som, Telegram, Discord e ntfy.sh
-- Histórico em CSV e SQLite
-- Temas: Dark, Light, High Contrast, Cyberpunk
+**Key Features:**
+- Real-time monitoring of CPU, GPU, RAM, Storage, and Network
+- Desktop GUI (Tkinter) and Web interface (FastAPI)
+- Alerts via sound, Telegram, Discord, and ntfy.sh
+- History logging in CSV and SQLite
+- Themes: Dark, Light, High Contrast, Cyberpunk
 
-## 🛠️ Tecnologias Utilizadas
+## 🛠️ Technologies Used
 
-| Tecnologia | Função | Justificativa |
-|------------|--------|---------------|
-| **Python 3.10+** | Linguagem principal | Prototipagem rápida e integração nativa com Windows |
-| **LibreHardwareMonitor** | Leitura de sensores | Única solução open-source para sensores de hardware no Windows |
-| **pythonnet** | Bridge .NET → Python | Permite consumir a DLL do LibreHardwareMonitor |
-| **tkinter** | GUI desktop | Incluso no Python, zero dependências externas |
-| **FastAPI** | Interface Web | Framework leve e moderno para API REST |
-| **SQLite** | Persistência | Banco embutido, não requer instalação |
-| **gzip** | Compressão UDP | Reduz ~60% do tamanho dos pacotes |
+| Technology | Purpose | Rationale |
+|------------|---------|-----------|
+| **Python 3.10+** | Main language | Fast prototyping and native Windows integration |
+| **LibreHardwareMonitor** | Sensor reading | Only open-source solution for hardware sensors on Windows |
+| **pythonnet** | .NET → Python bridge | Required to consume LibreHardwareMonitor DLL |
+| **tkinter** | Desktop GUI | Bundled with Python, zero external dependencies |
+| **FastAPI** | Web interface | Lightweight and modern REST API framework |
+| **SQLite** | Persistence | Embedded database, no installation required |
+| **gzip** | UDP compression | Reduces packet size by ~60% |
 
-## 🚀 Como Rodar o Projeto
+## 🚀 How to Run
 
-### Pré-requisitos
+### Prerequisites
 - Windows 10/11
 - Python 3.10+
-- Privilégios de Administrador (Sender)
+- Administrator privileges (Sender)
 
-### Instalação
+### Installation
 
 ```bash
 git clone https://github.com/Nyefall/Telemetria.git
@@ -55,41 +55,41 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Execução
+### Execution
 
 ```bash
-# Launcher com seleção de modo
+# Launcher with mode selection
 python telemetria.py
 
-# Ou diretamente:
-python sender_pc.py           # PC monitorado (requer Admin)
+# Or directly:
+python sender_pc.py           # Monitored PC (requires Admin)
 python receiver_notebook.py   # Dashboard
 ```
 
-### Interface Web (opcional)
+### Web Interface (optional)
 
 ```bash
 pip install fastapi uvicorn
 python -m web.server
-# Acesse http://localhost:8080
+# Access http://localhost:8080
 ```
 
-## 📁 Estrutura do Projeto
+## 📁 Project Structure
 
 ```
 Telemetria/
-├── telemetria.py           # Launcher unificado
-├── sender_pc.py            # Coleta e transmissão de dados
-├── receiver_notebook.py    # Dashboard Tkinter
-├── hardware_monitor.py     # Interface LibreHardwareMonitor
-├── core/                   # Módulos: config, protocol, alerts, history
-├── ui/                     # Temas e widgets
-├── web/                    # Servidor FastAPI
-├── libs/                   # DLLs LibreHardwareMonitor
-└── config.json             # Configurações
+├── telemetria.py           # Unified launcher
+├── sender_pc.py            # Data collection and transmission
+├── receiver_notebook.py    # Tkinter dashboard
+├── hardware_monitor.py     # LibreHardwareMonitor interface
+├── core/                   # Modules: config, protocol, alerts, history
+├── ui/                     # Themes and widgets
+├── web/                    # FastAPI server
+├── libs/                   # LibreHardwareMonitor DLLs
+└── config.json             # Configuration
 ```
 
-## ⚙️ Configuração
+## ⚙️ Configuration
 
 ### Sender (`config.json`)
 ```json
@@ -112,48 +112,48 @@ Telemetria/
     },
     "webhooks": {
         "telegram_bot_token": "TOKEN",
-        "ntfy_topic": "meu-pc"
+        "ntfy_topic": "my-pc"
     }
 }
 ```
 
-## ⌨️ Atalhos (Receiver)
+## ⌨️ Keyboard Shortcuts (Receiver)
 
-| Tecla | Função |
-|-------|--------|
-| `S` | Configurações |
-| `T` | Alternar tema |
-| `G` | Mostrar/ocultar gráficos |
+| Key | Function |
+|-----|----------|
+| `S` | Settings |
+| `T` | Toggle theme |
+| `G` | Show/hide graphs |
 | `F` | Fullscreen |
-| `L` | Ativar log CSV |
-| `Q` | Sair |
+| `L` | Enable CSV logging |
+| `Q` | Quit |
 
-## 📊 Métricas Coletadas
+## 📊 Collected Metrics
 
-| Componente | Dados |
-|------------|-------|
-| **CPU** | Uso, Temperatura, Clock, Potência |
-| **GPU** | Carga, Temperatura, VRAM, Fan RPM |
-| **RAM** | Uso percentual, GB utilizados |
-| **Storage** | Temperatura, Saúde, Throughput |
-| **Rede** | Download/Upload, Ping |
+| Component | Data |
+|-----------|------|
+| **CPU** | Usage, Temperature, Clock, Power |
+| **GPU** | Load, Temperature, VRAM, Fan RPM |
+| **RAM** | Usage percentage, GB used |
+| **Storage** | Temperature, Health, Throughput |
+| **Network** | Download/Upload, Ping |
 
-## 🔧 Build do Executável
+## 🔧 Building the Executable
 
 ```bash
 pip install pyinstaller
 python scripts/build_unified.py
-# Gera dist/Telemetria.exe (~29 MB)
+# Generates dist/Telemetria.exe (~29 MB)
 ```
 
-## 📄 Licença
+## 📄 License
 
-MIT License - veja [LICENSE](LICENSE) para detalhes.
+MIT License - see [LICENSE](LICENSE) for details.
 
-### Aviso de Terceiros
+### Third-Party Notice
 
-Este software utiliza a biblioteca [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), licenciada sob a [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/).
+This software uses the [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) library, licensed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/).
 
-## 👤 Autor
+## 👤 Author
 
 [@Nyefall](https://github.com/Nyefall)

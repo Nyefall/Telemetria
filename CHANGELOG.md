@@ -1,164 +1,150 @@
-# Changelog - Sistema de Telemetria
+# Changelog - Telemetry System
 
-## v1.2.0 - Janeiro 2026 - Configurações Gerais
+## v1.2.0 - January 2026 - General Settings
 
-### 🎯 Mudanças Principais
+### 🎯 Main Changes
 
-**Configurações Gerais (Receiver)**
-- ✨ **NOVO**: Painel de configurações com abas (tecla `S`)
-- 🎨 **Aba Aparência**: 4 temas (Dark, Light, High Contrast, Cyberpunk) + cores customizadas por setor
-- 🔔 **Aba Alertas**: Thresholds personalizáveis para temperatura/uso de CPU, GPU, RAM, Storage, Ping
-- 📱 **Aba Notificações**: Integração com Telegram, Discord e ntfy.sh (push gratuito)
-- 📊 **Aba Histórico**: Configuração de log CSV e retenção
+**General Settings (Receiver)**
+- ✨ **NEW**: Tabbed settings panel (press `S`)
+- 🎨 **Appearance Tab**: 4 themes (Dark, Light, High Contrast, Cyberpunk) + custom colors per sector
+- 🔔 **Alerts Tab**: Customizable thresholds for CPU, GPU, RAM, Storage, Ping temperature/usage
+- 📱 **Notifications Tab**: Integration with Telegram, Discord, and ntfy.sh (free push)
+- 📊 **History Tab**: CSV logging and retention configuration
 
-**Alertas e Notificações**
-- ✨ Thresholds de aviso e crítico configuráveis por métrica
-- ✨ Cooldown configurável para sons e webhooks
-- ✨ Suporte a ntfy.sh para notificações push gratuitas no celular
+**Alerts and Notifications**
+- ✨ Configurable warning and critical thresholds per metric
+- ✨ Configurable cooldown for sounds and webhooks
+- ✨ ntfy.sh support for free mobile push notifications
 
-**Aparência**
-- ✨ Novos temas: High Contrast (acessibilidade) e Cyberpunk
-- ✨ Cores personalizáveis por setor (CPU, GPU, RAM, etc.) via código hex
-- 🎨 Temas salvos persistentemente em `receiver_config.json`
+**Appearance**
+- ✨ New themes: High Contrast (accessibility) and Cyberpunk
+- ✨ Custom colors per sector (CPU, GPU, RAM, etc.) via hex code
+- 🎨 Themes persistently saved in `receiver_config.json`
 
-**Arquivos**
-- ✨ **NOVO**: `receiver_config.example.json` - exemplo de configuração
-- 📝 Estrutura expandida do `receiver_config.json` com todas as opções
+**Files**
+- ✨ **NEW**: `receiver_config.example.json` - configuration example
+- 📝 Expanded `receiver_config.json` structure with all options
 
-### ⌨️ Novos Atalhos
+### ⌨️ New Shortcuts
 
-| Tecla | Função |
-|-------|--------|
-| `S` | ⚙️ Configurações Gerais (novo!) |
-| `I` | Agora abre Configurações Gerais (mantido para compatibilidade) |
+| Key | Function |
+|-----|----------|
+| `S` | ⚙️ General Settings (new!) |
+| `I` | Now opens General Settings (kept for compatibility) |
 
 ---
 
-## v1.1.0 - Janeiro 2026 - Executável Unificado
+## v1.1.0 - January 2026 - Unified Executable
 
-### 🎯 Mudanças Principais
+### 🎯 Main Changes
 
-**Executável Unificado**
-- ✨ **NOVO**: `Telemetria.exe` - um único executável com seleção de modo
-- 📱 Interface gráfica de launcher para escolher entre Sender ou Receiver
-- 🎨 Design moderno com botões coloridos e descrições claras
-- 💾 Tamanho otimizado: 29 MB (vs 35+16 MB antes)
+**Unified Executable**
+- ✨ **NEW**: `Telemetria.exe` - single executable with mode selection
+- 📱 Graphical launcher interface to choose between Sender or Receiver
+- 🎨 Modern design with colored buttons and clear descriptions
+- 💾 Optimized size: 29 MB (vs 35+16 MB before)
 
-**Arquitetura**
-- ✨ **NOVO**: `telemetria.py` - launcher principal
-- 🔧 Refatoração: `sender_pc.py` e `receiver_notebook.py` agora exportam `main()`
-- 📦 Scripts de build unificados em `scripts/build_unified.py`
+**Architecture**
+- ✨ **NEW**: `telemetria.py` - main launcher
+- 🔧 Refactoring: `sender_pc.py` and `receiver_notebook.py` now export `main()`
+- 📦 Unified build scripts in `scripts/build_unified.py`
 
-**Documentação**
-- 📝 README.md atualizado com nova estrutura
-- 🗑️ Removido README.old.md (backup obsoleto)
-- 📋 README.txt na pasta dist atualizado para executável único
-- ✨ Novo arquivo CHANGELOG.md para tracking de versões
+**Documentation**
+- 📝 README.md updated with new structure
+- 🗑️ Removed README.old.md (obsolete backup)
+- 📋 README.txt in dist folder updated for single executable
+- ✨ New CHANGELOG.md file for version tracking
 
 **Scripts**
-- ✨ **NOVO**: `scripts/build_unified.py` - build do executável unificado
-- ✨ **NOVO**: `scripts/RUN_TELEMETRIA.bat` - launcher via batch
-- 📁 Scripts de build legado mantidos para compatibilidade
+- ✨ **NEW**: `scripts/build_unified.py` - unified executable build
+- ✨ **NEW**: `scripts/RUN_TELEMETRIA.bat` - batch launcher
+- 📁 Legacy build scripts kept for compatibility
 
 **.gitignore**
-- 🧹 Adicionado *.old e *.old.* para ignorar backups
-- 🧹 Adicionado *.tmp para arquivos temporários Windows
-- 🧹 Melhoria geral na organização
+- 🧹 Added *.old and *.old.* to ignore backups
+- 🧹 Added *.tmp for Windows temp files
+- 🧹 General organization improvement
 
-### 📊 Comparação de Versões
+### 📊 Version Comparison
 
-| Aspecto | v1.0.0 (Legado) | v1.1.0 (Unificado) |
-|---------|-----------------|---------------------|
-| Executáveis | 2 arquivos separados | 1 arquivo único |
-| Tamanho Total | 51 MB | 29 MB |
-| Seleção de Modo | Manual (2 .exe) | Interface gráfica |
-| Distribuição | Copiar 2 arquivos | Copiar 1 arquivo |
-| Experiência | Técnica | User-friendly |
+| Aspect | v1.0.0 (Legacy) | v1.1.0 (Unified) |
+|--------|-----------------|------------------|
+| Executables | 2 separate files | 1 single file |
+| Total Size | 51 MB | 29 MB |
+| Mode Selection | Manual (2 .exe) | Graphical interface |
+| Distribution | Copy 2 files | Copy 1 file |
+| Experience | Technical | User-friendly |
 
-### 🔄 Migração de v1.0.0 para v1.1.0
+### 🔄 Migration from v1.0.0 to v1.1.0
 
-**Usuários finais:**
-- Substituir `TelemetriaSender.exe` e `TelemetriaReceiver.exe` por `Telemetria.exe`
-- Manter `config.json` e `libs/` no mesmo local
-- Executar e escolher o modo desejado
+**End users:**
+- Replace `TelemetriaSender.exe` and `TelemetriaReceiver.exe` with `Telemetria.exe`
+- Keep `config.json` and `libs/` in the same location
+- Run and choose the desired mode
 
-**Desenvolvedores:**
-- Código fonte permanece compatível
-- Novos imports: `import sender_pc` e `import receiver_notebook`
+**Developers:**
+- Source code remains compatible
+- New imports: `import sender_pc` and `import receiver_notebook`
 - Build: `python scripts/build_unified.py`
 
-### 🐛 Correções
+### 🐛 Bug Fixes
 
-- Nenhum bug reportado na v1.0
+- No bugs reported in v1.0
 
-### 📦 Arquivos do Release
+### 📦 Release Files
 
 ```
 dist/
-├── Telemetria.exe          ⭐ NOVO - Executável unificado (29 MB)
-├── config.json             Configuração do sender
-├── libs/                   DLLs do LibreHardwareMonitor
-├── README.txt              Guia de uso atualizado
-├── TelemetriaSender.exe    [LEGADO] Mantido para compatibilidade
-└── TelemetriaReceiver.exe  [LEGADO] Mantido para compatibilidade
+├── Telemetria.exe          ⭐ NEW - Unified executable (29 MB)
+├── config.json             Sender configuration
+├── libs/                   LibreHardwareMonitor DLLs
+├── README.txt              Updated usage guide
+├── TelemetriaSender.exe    [LEGACY] Kept for compatibility
+└── TelemetriaReceiver.exe  [LEGACY] Kept for compatibility
 ```
 
 ---
 
-## v1.0.0 - Janeiro 2026 - Release Inicial
+## v1.0.0 - January 2026 - Initial Release
 
-### Funcionalidades
+### Features
 
-- ✅ Monitoramento completo de hardware (CPU, GPU, RAM, Storage, Rede)
+- ✅ Complete hardware monitoring (CPU, GPU, RAM, Storage, Network)
 - ✅ LibreHardwareMonitor via pythonnet
-- ✅ Comunicação UDP (broadcast + manual IP)
+- ✅ UDP communication (broadcast + manual IP)
 - ✅ Magic byte protocol (0x01 gzip, 0x00 raw)
-- ✅ Compressão gzip (~50% redução)
-- ✅ System Tray no sender (pystray)
-- ✅ Dashboard com temas claro/escuro
-- ✅ Log CSV de histórico
-- ✅ Notificações Windows (win10toast)
-- ✅ Configuração de interface de rede (bind_ip)
-- ✅ Auto-elevação para Admin (sender)
+- ✅ Gzip compression (~50% reduction)
+- ✅ System Tray on sender (pystray)
+- ✅ Dashboard with light/dark themes
+- ✅ CSV history logging
+- ✅ Windows notifications (win10toast)
+- ✅ Network interface configuration (bind_ip)
+- ✅ Auto-elevation to Admin (sender)
 
-### Arquivos
+### Files
 
-- `sender_pc.py` - Sender standalone
-- `receiver_notebook.py` - Receiver standalone
-- `hardware_monitor.py` - Interface de sensores
-- `config.json` - Configuração
-- `receiver_config.json` - Config dinâmica do receiver (tecla I)
+- `sender_pc.py` - Standalone Sender
+- `receiver_notebook.py` - Standalone Receiver
+- `hardware_monitor.py` - Sensor interface
+- `config.json` - Configuration
+- `receiver_config.json` - Dynamic receiver config (key I)
 
 ### Build
 
-- `scripts/build_sender.py` - Build do sender
-- `scripts/build_receiver.py` - Build do receiver
-- `scripts/build_all.py` - Build de ambos
+- `scripts/build_sender.py` - Sender build
+- `scripts/build_receiver.py` - Receiver build
+- `scripts/build_all.py` - Build both
 
-### Testes
+### Tests
 
-- `tests/test_admin_sensors.py` - Verificação de sensores
-- `tests/test_connectivity.py` - Teste de rede UDP
-- `tests/test_receiver_quick.py` - Teste de recepção
+- `tests/test_admin_sensors.py` - Sensor verification
+- `tests/test_connectivity.py` - UDP network test
+- `tests/test_receiver_quick.py` - Reception test
 
 ---
 
-## Roadmap Futuro
+## Future Roadmap
 
-### v1.3.0 (Próxima)
-- [ ] Adicionar ícone personalizado ao executável
-- [ ] Interface Web (Flask/FastAPI) para acesso via navegador
-- [ ] Histórico de conexões no receiver
-- [ ] Suporte a múltiplos senders
-
-### v2.0.0 (Futuro)
-- [ ] Gráficos históricos (últimos 5 min, 1h, etc)
-- [ ] Export de relatórios em PDF
-- [ ] Modo de economia de energia
-- [ ] SQLite para histórico persistente
-
-### Ideias em Análise
-- [ ] Suporte para Linux (se LibreHardwareMonitor disponibilizar)
-- [ ] API REST para integração com outros sistemas
-- [ ] Plugin system para sensores customizados
-- [ ] Tema personalizável via CSS
+### v1.3.0 (Next)
+- [ ] Add custom icon to executable
+- [ ] WebSocket support for real-time web updates

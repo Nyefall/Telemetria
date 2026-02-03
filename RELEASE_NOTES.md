@@ -1,66 +1,66 @@
-# 📡 Telemetria v2.0 - Executável Unificado
+# 📡 Telemetry v2.0 - Unified Executable
 
-## 🎯 Novidades
+## 🎯 What's New
 
-- **Executável único** - Um único `Telemetria.exe` com seleção de modo (Sender/Receiver)
-- **Interface de seleção** - Launcher gráfico para escolher entre PC Principal ou Dashboard
-- **Auto-elevação inteligente** - Solicita privilégios de Admin apenas para o Sender
-- **Tamanho otimizado** - 29 MB (antes eram 51 MB em 2 arquivos separados)
+- **Single executable** - One `Telemetria.exe` with mode selection (Sender/Receiver)
+- **Selection interface** - Graphical launcher to choose between Main PC or Dashboard
+- **Smart auto-elevation** - Requests Admin privileges only for Sender
+- **Optimized size** - 29 MB (previously 51 MB in 2 separate files)
 
-## 📦 Conteúdo do Download
+## 📦 Download Contents
 
 ```
 Telemetria-v2.0-Windows.zip
-├── Telemetria.exe    # Executável unificado
-├── config.json       # Configuração do Sender
-├── libs/             # DLLs do LibreHardwareMonitor
-└── README.txt        # Guia rápido de uso
+├── Telemetria.exe    # Unified executable
+├── config.json       # Sender configuration
+├── libs/             # LibreHardwareMonitor DLLs
+└── README.txt        # Quick start guide
 ```
 
-## 🚀 Como Usar
+## 🚀 How to Use
 
-### No PC Principal (Sender)
-1. Extraia o ZIP
-2. Execute `Telemetria.exe`
-3. Clique em **"SENDER (PC Principal)"**
-4. Aceite a solicitação de privilégios de Administrador
-5. O programa ficará na bandeja do sistema
+### On Main PC (Sender)
+1. Extract the ZIP
+2. Run `Telemetria.exe`
+3. Click **"SENDER (Main PC)"**
+4. Accept the Administrator privileges request
+5. The program will minimize to the system tray
 
-### No Notebook/Outro PC (Receiver)
-1. Copie `Telemetria.exe` para o dispositivo
-2. Execute e clique em **"RECEIVER (Dashboard)"**
-3. Pressione `I` para configurar o IP do PC (se necessário)
+### On Laptop/Other PC (Receiver)
+1. Copy `Telemetria.exe` to the device
+2. Run and click **"RECEIVER (Dashboard)"**
+3. Press `I` to configure the PC's IP (if needed)
 
-## ⌨️ Atalhos do Dashboard
+## ⌨️ Dashboard Shortcuts
 
-| Tecla | Função |
-|-------|--------|
-| `I` | Configurar IP/Porta do Sender |
-| `T` | Alternar tema (escuro/claro) |
-| `L` | Ativar/desativar log CSV |
-| `G` | Mostrar/ocultar gráficos |
+| Key | Function |
+|-----|----------|
+| `I` | Configure Sender IP/Port |
+| `T` | Toggle theme (dark/light) |
+| `L` | Enable/disable CSV logging |
+| `G` | Show/hide graphs |
 | `F` | Fullscreen |
-| `Q` / `ESC` | Sair |
+| `Q` / `ESC` | Quit |
 
-## 📊 Sensores Monitorados
+## 📊 Monitored Sensors
 
-- **CPU**: Uso, Temperatura, Voltagem, Clock, Potência
-- **GPU**: Carga, Temperatura, Clock, VRAM, Fan RPM
-- **RAM**: Uso percentual, Usada/Total
-- **Storage**: Temperatura, Saúde, Atividade, Throughput
-- **Rede**: Download/Upload, Ping
+- **CPU**: Usage, Temperature, Voltage, Clock, Power
+- **GPU**: Load, Temperature, Clock, VRAM, Fan RPM
+- **RAM**: Usage percentage, Used/Total
+- **Storage**: Temperature, Health, Activity, Throughput
+- **Network**: Download/Upload, Ping
 
-## ⚠️ Requisitos
+## ⚠️ Requirements
 
 - Windows 10/11
-- Mesma rede local (ou configuração manual de IP)
-- Porta UDP 5005 liberada no firewall
-- Privilégios de Administrador no Sender
+- Same local network (or manual IP configuration)
+- UDP port 5005 allowed in firewall
+- Administrator privileges on Sender
 
-## 🔧 Configuração Avançada
+## 🔧 Advanced Configuration
 
-### Forçar interface de rede (VPN ativa)
-Edite `config.json` e configure `bind_ip` com o IP da interface Ethernet:
+### Force network interface (VPN active)
+Edit `config.json` and set `bind_ip` to your Ethernet interface IP:
 ```json
 {
     "bind_ip": "192.168.10.101"
@@ -69,4 +69,4 @@ Edite `config.json` e configure `bind_ip` com o IP da interface Ethernet:
 
 ---
 
-**Desenvolvido por [@Nyefall](https://github.com/Nyefall)**
+**Developed by [@Nyefall](https://github.com/Nyefall)**
