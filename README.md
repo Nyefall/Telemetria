@@ -19,7 +19,7 @@ Real-time hardware monitoring system over local network. Collects CPU, GPU, RAM,
 └─────────────────┘                      └─────────────────┘
 ```
 
-<img width="1365" height="785" alt="image" src="https://github.com/user-attachments/assets/bf57d906-9159-4a0f-b1c9-7c73296e6b34" />
+<img width="1707" height="861" alt="Captura de tela 2026-02-02 234353" src="https://github.com/user-attachments/assets/fbde002a-d855-43dc-b0d5-0c1e2268d2ac" /> <img width="596" height="646" alt="image" src="https://github.com/user-attachments/assets/dbc6b20f-5d70-4a3f-89a4-b1175092efef" /> <img width="594" height="644" alt="Captura de tela 2026-02-02 234521" src="https://github.com/user-attachments/assets/9e31a4e2-580f-440f-886d-4a42df060038" /> <img width="597" height="646" alt="Captura de tela 2026-02-02 234504" src="https://github.com/user-attachments/assets/4039fb5a-293c-4e9e-b560-0c93055939eb" /> <img width="598" height="647" alt="Captura de tela 2026-02-02 234437" src="https://github.com/user-attachments/assets/ff4cafc8-346c-4d53-b19f-6c9223aaf87f" /> <img width="596" height="650" alt="Captura de tela 2026-02-02 234412" src="https://github.com/user-attachments/assets/81c4f4c3-a108-4a30-b166-28515df55e54" />
 
 **Key Features:**
 - Real-time monitoring of CPU, GPU, RAM, Storage, and Network
