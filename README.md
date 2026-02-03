@@ -19,6 +19,8 @@ Real-time hardware monitoring system over local network. Collects CPU, GPU, RAM,
 └─────────────────┘                      └─────────────────┘
 ```
 
+<img width="1365" height="785" alt="image" src="https://github.com/user-attachments/assets/bf57d906-9159-4a0f-b1c9-7c73296e6b34" />
+
 **Key Features:**
 - Real-time monitoring of CPU, GPU, RAM, Storage, and Network
 - Desktop GUI (Tkinter) and Web interface (FastAPI)
@@ -37,6 +39,8 @@ Real-time hardware monitoring system over local network. Collects CPU, GPU, RAM,
 | **FastAPI** | Web interface | Lightweight and modern REST API framework |
 | **SQLite** | Persistence | Embedded database, no installation required |
 | **gzip** | UDP compression | Reduces packet size by ~60% |
+
+<img width="405" height="406" alt="image" src="https://github.com/user-attachments/assets/30d1177a-e11d-4c03-8a01-e1086691b1d1" />
 
 ## 🚀 How to Run
 
