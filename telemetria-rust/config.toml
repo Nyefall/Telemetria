@@ -1,0 +1,70 @@
+# ╔══════════════════════════════════════════════════════════╗
+# ║   Telemetria v2.0 – Configuração Unificada (TOML)      ║
+# ╚══════════════════════════════════════════════════════════╝
+
+# ── SENDER (PC Principal) ──
+[sender]
+mode = "broadcast"             # "broadcast" ou "unicast"
+dest_ip = "255.255.255.255"    # IP destino (broadcast ou IP fixo)
+port = 5005                    # Porta UDP
+interval_secs = 0.5            # Intervalo entre envios (segundos)
+bind_ip = ""                   # IP local para bind (vazio = auto)
+link_check_interval_secs = 10.0
+
+# ── RECEIVER (Dashboard) ──
+[receiver]
+port = 5005
+sender_ip = ""                 # Vazio = aceita qualquer sender (broadcast)
+mode = "auto"                  # "auto" ou "manual"
+expected_link_speed_mbps = 1000
+theme = "dark"                 # dark, light, high_contrast, cyberpunk
+
+[receiver.custom_colors]       # Override de cores do tema (hex ou vazio)
+cpu = ""
+gpu = ""
+ram = ""
+storage = ""
+network = ""
+mobo = ""
+
+# ── ALERTAS (Thresholds) ──
+[receiver.alerts]
+cpu_temp_warning = 70.0
+cpu_temp_critical = 85.0
+cpu_usage_warning = 70.0
+cpu_usage_critical = 90.0
+gpu_temp_warning = 75.0
+gpu_temp_critical = 90.0
+gpu_usage_warning = 80.0
+gpu_usage_critical = 95.0
+ram_warning = 70.0
+ram_critical = 90.0
+storage_temp_warning = 45.0
+storage_temp_critical = 55.0
+storage_usage_warning = 80.0
+storage_usage_critical = 95.0
+ping_warning = 50.0
+ping_critical = 100.0
+
+# ── SONS ──
+[receiver.sounds]
+enabled = true
+cooldown_seconds = 10.0
+warning_sound = "warning"
+critical_sound = "beep_urgent"
+
+# ── WEBHOOKS ──
+[receiver.webhooks]
+enabled = false
+telegram_bot_token = ""
+telegram_chat_id = ""
+discord_webhook_url = ""
+ntfy_topic = ""
+ntfy_server = "https://ntfy.sh"
+cooldown_seconds = 300
+
+# ── HISTÓRICO ──
+[receiver.history]
+csv_enabled = false
+auto_start_log = false
+retention_days = 7
