@@ -1,0 +1,18 @@
+[package]
+name = "telemetry_app"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Telemetria – Unified binary (Sender + Receiver)"
+
+[[bin]]
+name = "telemetria"
+path = "src/main.rs"
+
+[dependencies]
+telemetry_core = { path = "../telemetry_core" }
+telemetry_sender = { path = "../sender" }
+telemetry_receiver = { path = "../receiver" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

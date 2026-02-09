@@ -2193,6 +2193,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "telemetry_app"
+version = "2.0.0"
+dependencies = [
+ "telemetry_core",
+ "telemetry_receiver",
+ "telemetry_sender",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "telemetry_core"
 version = "2.0.0"
 dependencies = [
@@ -2222,6 +2233,8 @@ dependencies = [
 name = "telemetry_sender"
 version = "2.0.0"
 dependencies = [
+ "libc",
+ "libloading",
  "nvml-wrapper",
  "serde",
  "sysinfo",

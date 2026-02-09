@@ -22,6 +22,14 @@ pub struct SenderConfig {
     pub bind_ip: String,
     /// Intervalo para checar link de rede (segundos)
     pub link_check_interval_secs: f64,
+    /// Habilita sensores via LHM WMI (requer LibreHardwareMonitor)
+    pub use_lhm: bool,
+    /// Habilita leitura S.M.A.R.T. via DeviceIoControl
+    pub use_smart: bool,
+    /// Backend GPU: "auto" | "nvidia" | "amd" | "lhm" | "off"
+    pub gpu_backend: String,
+    /// Índice da GPU para leitura (0 = padrão)
+    pub gpu_index: u32,
 }
 
 impl Default for SenderConfig {
@@ -33,6 +41,10 @@ impl Default for SenderConfig {
             interval_secs: 0.5,
             bind_ip: String::new(),
             link_check_interval_secs: 10.0,
+            use_lhm: true,
+            use_smart: true,
+            gpu_backend: "auto".into(),
+            gpu_index: 0,
         }
     }
 }

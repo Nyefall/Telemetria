@@ -3,6 +3,7 @@ members = [
     "crates/telemetry_core",
     "crates/sender",
     "crates/receiver",
+    "crates/telemetry_app",
 ]
 resolver = "2"
 

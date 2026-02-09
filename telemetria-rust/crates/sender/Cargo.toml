@@ -16,6 +16,10 @@ tracing-subscriber = { workspace = true }
 # Hardware monitoring
 sysinfo = "0.35"
 
+# Dynamic library loading (AMD ADL)
+libloading = "0.8"
+libc = "0.2"
+
 # Sensores avançados – Windows only
 [target.'cfg(windows)'.dependencies]
 wmi = "0.14"

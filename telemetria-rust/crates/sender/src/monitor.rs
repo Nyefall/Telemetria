@@ -3,6 +3,7 @@
 //! **Tier 1 — Pure Rust (sempre disponível com admin, ~80% dos sensores):**
 //! - `sysinfo` — CPU usage, RAM, disco (espaço), rede (bytes)
 //! - `nvml-wrapper` — GPU NVIDIA: temp, uso, clocks, fan, VRAM
+//! - ADL SDK — GPU AMD: temp, uso, clocks, fan (via libloading)
 //! - `DeviceIoControl` S.M.A.R.T. — Storage: temperatura (NVMe + SATA)
 //! - Standard WMI — CPU clock, link speed, ACPI temp
 //!
@@ -15,6 +16,7 @@ use tracing::{debug, info, warn};
 
 #[cfg(windows)]
 use {
+    crate::amd_gpu::AmdGpuMonitor,
     crate::lhm_sensors,
     crate::nvml_gpu::NvmlMonitor,
     crate::smart_storage,
@@ -22,18 +24,81 @@ use {
     wmi::{COMLibrary, WMIConnection},
 };
 
+// ──────────────────────────────────────────────
+// Opções de monitoramento
+// ──────────────────────────────────────────────
+
+/// Backend de GPU selecionável pelo usuário.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GpuBackend {
+    /// Detecta automaticamente (NVML → ADL → LHM).
+    Auto,
+    /// Forçar NVML (NVIDIA).
+    Nvidia,
+    /// Forçar ADL (AMD).
+    Amd,
+    /// Forçar dados de GPU via LHM WMI.
+    Lhm,
+    /// Desativar monitoramento de GPU.
+    Off,
+}
+
+impl GpuBackend {
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "nvidia" => Self::Nvidia,
+            "amd" => Self::Amd,
+            "lhm" => Self::Lhm,
+            "off" => Self::Off,
+            _ => Self::Auto,
+        }
+    }
+}
+
+/// Opções para o `HardwareMonitor`.
+#[derive(Clone, Copy, Debug)]
+pub struct MonitorOptions {
+    /// Habilita LHM WMI (Tier 2, requer LibreHardwareMonitor rodando).
+    pub use_lhm: bool,
+    /// Habilita S.M.A.R.T. DeviceIoControl (requer admin).
+    pub use_smart: bool,
+    /// Qual backend de GPU usar.
+    pub gpu_backend: GpuBackend,
+    /// Índice da GPU (0 = primeira detectada).
+    pub gpu_index: u32,
+}
+
+impl Default for MonitorOptions {
+    fn default() -> Self {
+        Self {
+            use_lhm: true,
+            use_smart: true,
+            gpu_backend: GpuBackend::Auto,
+            gpu_index: 0,
+        }
+    }
+}
+
+// ──────────────────────────────────────────────
+// Hardware Monitor
+// ──────────────────────────────────────────────
+
 /// Monitor de hardware principal.
 pub struct HardwareMonitor {
     sys: System,
     disks: Disks,
     networks: Networks,
     components: Components,
-    /// Bytes de rede do último ciclo (sent, recv, timestamp)
+    /// Bytes de rede do último ciclo (sent, recv, timestamp).
     last_net: Option<(u64, u64, std::time::Instant)>,
+    /// Opções ativas.
+    options: MonitorOptions,
 
     // ── Fontes avançadas (Windows) ──
     #[cfg(windows)]
     nvml: Option<NvmlMonitor>,
+    #[cfg(windows)]
+    amd: Option<AmdGpuMonitor>,
     #[cfg(windows)]
     wmi_lhm: Option<WMIConnection>,
     #[cfg(windows)]
@@ -43,30 +108,52 @@ pub struct HardwareMonitor {
 }
 
 impl HardwareMonitor {
-    /// Cria um novo monitor e detecta fontes de sensores disponíveis.
+    /// Cria um novo monitor com opções padrão.
+    #[allow(dead_code)]
     pub fn new() -> Self {
+        Self::new_with_options(MonitorOptions::default())
+    }
+
+    /// Cria monitor com opções customizadas.
+    pub fn new_with_options(options: MonitorOptions) -> Self {
         let sys = System::new_with_specifics(
             RefreshKind::nothing()
                 .with_cpu(CpuRefreshKind::everything())
                 .with_memory(MemoryRefreshKind::everything()),
         );
 
-        // ── Inicializar fontes avançadas (Windows) ──
+        // ── GPU: inicializar conforme backend ──
         #[cfg(windows)]
-        let nvml = NvmlMonitor::try_new();
+        let nvml = if matches!(options.gpu_backend, GpuBackend::Auto | GpuBackend::Nvidia) {
+            NvmlMonitor::try_new()
+        } else {
+            None
+        };
 
         #[cfg(windows)]
-        let (wmi_lhm, wmi_cimv2, wmi_acpi) = init_wmi_connections();
+        let amd = if matches!(options.gpu_backend, GpuBackend::Auto | GpuBackend::Amd) {
+            AmdGpuMonitor::try_new()
+        } else {
+            None
+        };
 
+        // ── WMI connections ──
         #[cfg(windows)]
-        {
+        let (wmi_lhm, wmi_cimv2, wmi_acpi) = init_wmi_connections(options.use_lhm);
+
+        // ── S.M.A.R.T. probe ──
+        #[cfg(windows)]
+        if options.use_smart {
             let initial_smart = smart_storage::query_drive_temperatures();
             if initial_smart.is_empty() {
                 warn!("✗ S.M.A.R.T.: nenhum drive acessível (requer admin)");
             } else {
                 info!("✓ S.M.A.R.T.: {} drives detectados", initial_smart.len());
                 for d in &initial_smart {
-                    info!("  PhysicalDrive{}: {} ({:.0}°C)", d.drive_index, d.model, d.temp_celsius);
+                    info!(
+                        "  PhysicalDrive{}: {} ({:.0}°C)",
+                        d.drive_index, d.model, d.temp_celsius
+                    );
                 }
             }
         }
@@ -77,8 +164,11 @@ impl HardwareMonitor {
             networks: Networks::new_with_refreshed_list(),
             components: Components::new_with_refreshed_list(),
             last_net: None,
+            options,
             #[cfg(windows)]
             nvml,
+            #[cfg(windows)]
+            amd,
             #[cfg(windows)]
             wmi_lhm,
             #[cfg(windows)]
@@ -252,105 +342,123 @@ impl HardwareMonitor {
 
     #[cfg(windows)]
     fn enrich_windows(&mut self, payload: &mut TelemetryPayload) {
-        let mut gpu_from_lhm = false;
+        let opts = self.options;
+        let mut gpu_filled = false;
 
         // ── S.M.A.R.T. nativo: storage temps (pure Rust, sem CLR) ──
-        {
+        if opts.use_smart {
             let smart_temps = smart_storage::query_drive_temperatures();
             if !smart_temps.is_empty() {
-                let tuples: Vec<(String, f32)> = smart_temps
-                    .iter()
-                    .map(|d| (d.model.clone(), d.temp_celsius))
-                    .collect();
-                apply_storage_temps(&mut payload.storage, &tuples);
-            }
-        }
-
-        // ── Priority 1: LibreHardwareMonitor WMI (luxury sensors) ──
-        if let Some(ref wmi_lhm) = self.wmi_lhm {
-            match lhm_sensors::query_all(wmi_lhm) {
-                Ok(lhm) => {
-                    // CPU
-                    if lhm.cpu_temp > 0.0 {
-                        payload.cpu.temp = lhm.cpu_temp;
-                    }
-                    if lhm.cpu_voltage > 0.0 {
-                        payload.cpu.voltage = lhm.cpu_voltage;
-                    }
-                    if lhm.cpu_power > 0.0 {
-                        payload.cpu.power = lhm.cpu_power;
-                    }
-                    if lhm.cpu_clock > 0.0 {
-                        payload.cpu.clock = lhm.cpu_clock;
-                    }
-
-                    // GPU
-                    if lhm.gpu_temp > 0.0 || lhm.gpu_load > 0.0 {
-                        gpu_from_lhm = true;
-                        if lhm.gpu_temp > 0.0 {
-                            payload.gpu.temp = lhm.gpu_temp;
-                        }
-                        if lhm.gpu_load > 0.0 {
-                            payload.gpu.load = lhm.gpu_load;
-                        }
-                        if lhm.gpu_voltage > 0.0 {
-                            payload.gpu.voltage = lhm.gpu_voltage;
-                        }
-                        if lhm.gpu_clock_core > 0.0 {
-                            payload.gpu.clock_core = lhm.gpu_clock_core;
-                        }
-                        if lhm.gpu_clock_mem > 0.0 {
-                            payload.gpu.clock_mem = lhm.gpu_clock_mem;
-                        }
-                        if lhm.gpu_fan_rpm > 0.0 {
-                            payload.gpu.fan = lhm.gpu_fan_rpm;
-                        }
-                        if lhm.gpu_mem_used_mb > 0.0 {
-                            payload.gpu.mem_used_mb = lhm.gpu_mem_used_mb;
-                        }
-                    }
-
-                    // Mobo
-                    if lhm.mobo_temp > 0.0 {
-                        payload.mobo.temp = lhm.mobo_temp;
-                    }
-
-                    // Storage temps
-                    apply_storage_temps(&mut payload.storage, &lhm.storage_temps);
-
-                    // Fans (substitui os do sysinfo)
-                    if !lhm.fans.is_empty() {
-                        payload.fans = lhm
-                            .fans
-                            .iter()
-                            .map(|(n, r)| FanData {
-                                name: n.clone(),
-                                rpm: *r,
-                            })
-                            .collect();
-                    }
-
-                    debug!(
-                        "LHM: CPU {:.1}°C {:.2}V {:.1}W | GPU {:.1}°C {:.0}% | Mobo {:.1}°C | {} fans",
-                        lhm.cpu_temp,
-                        lhm.cpu_voltage,
-                        lhm.cpu_power,
-                        lhm.gpu_temp,
-                        lhm.gpu_load,
-                        lhm.mobo_temp,
-                        lhm.fans.len(),
-                    );
+                // Se sysinfo não retornou discos, criar entradas a partir do SMART
+                if payload.storage.is_empty() {
+                    payload.storage = smart_temps
+                        .iter()
+                        .map(|d| StorageData {
+                            name: d.model.clone(),
+                            temp: d.temp_celsius,
+                            ..Default::default()
+                        })
+                        .collect();
+                } else {
+                    let tuples: Vec<(String, f32)> = smart_temps
+                        .iter()
+                        .map(|d| (d.model.clone(), d.temp_celsius))
+                        .collect();
+                    apply_storage_temps(&mut payload.storage, &tuples);
                 }
-                Err(e) => debug!("LHM query falhou: {e}"),
             }
         }
 
-        // ── Priority 2: NVML (GPU fallback se LHM não forneceu GPU) ──
-        if !gpu_from_lhm {
+        // ── Priority 1: LHM WMI (luxury sensors — CPU voltage/power, Mobo, fans) ──
+        if opts.use_lhm {
+            if let Some(ref wmi_lhm) = self.wmi_lhm {
+                match lhm_sensors::query_all(wmi_lhm) {
+                    Ok(lhm) => {
+                        // CPU
+                        if lhm.cpu_temp > 0.0 {
+                            payload.cpu.temp = lhm.cpu_temp;
+                        }
+                        if lhm.cpu_voltage > 0.0 {
+                            payload.cpu.voltage = lhm.cpu_voltage;
+                        }
+                        if lhm.cpu_power > 0.0 {
+                            payload.cpu.power = lhm.cpu_power;
+                        }
+                        if lhm.cpu_clock > 0.0 {
+                            payload.cpu.clock = lhm.cpu_clock;
+                        }
+
+                        // GPU (somente se backend=Auto ou Lhm)
+                        if matches!(opts.gpu_backend, GpuBackend::Auto | GpuBackend::Lhm) {
+                            if lhm.gpu_temp > 0.0 || lhm.gpu_load > 0.0 {
+                                gpu_filled = true;
+                                if lhm.gpu_temp > 0.0 {
+                                    payload.gpu.temp = lhm.gpu_temp;
+                                }
+                                if lhm.gpu_load > 0.0 {
+                                    payload.gpu.load = lhm.gpu_load;
+                                }
+                                if lhm.gpu_voltage > 0.0 {
+                                    payload.gpu.voltage = lhm.gpu_voltage;
+                                }
+                                if lhm.gpu_clock_core > 0.0 {
+                                    payload.gpu.clock_core = lhm.gpu_clock_core;
+                                }
+                                if lhm.gpu_clock_mem > 0.0 {
+                                    payload.gpu.clock_mem = lhm.gpu_clock_mem;
+                                }
+                                if lhm.gpu_fan_rpm > 0.0 {
+                                    payload.gpu.fan = lhm.gpu_fan_rpm;
+                                }
+                                if lhm.gpu_mem_used_mb > 0.0 {
+                                    payload.gpu.mem_used_mb = lhm.gpu_mem_used_mb;
+                                }
+                            }
+                        }
+
+                        // Mobo
+                        if lhm.mobo_temp > 0.0 {
+                            payload.mobo.temp = lhm.mobo_temp;
+                        }
+
+                        // Storage temps
+                        apply_storage_temps(&mut payload.storage, &lhm.storage_temps);
+
+                        // Fans (substitui os do sysinfo)
+                        if !lhm.fans.is_empty() {
+                            payload.fans = lhm
+                                .fans
+                                .iter()
+                                .map(|(n, r)| FanData {
+                                    name: n.clone(),
+                                    rpm: *r,
+                                })
+                                .collect();
+                        }
+
+                        debug!(
+                            "LHM: CPU {:.1}°C {:.2}V {:.1}W | GPU {:.1}°C {:.0}% | Mobo {:.1}°C | {} fans",
+                            lhm.cpu_temp,
+                            lhm.cpu_voltage,
+                            lhm.cpu_power,
+                            lhm.gpu_temp,
+                            lhm.gpu_load,
+                            lhm.mobo_temp,
+                            lhm.fans.len(),
+                        );
+                    }
+                    Err(e) => debug!("LHM query falhou: {e}"),
+                }
+            }
+        }
+
+        // ── Priority 2: NVML (NVIDIA GPU) ──
+        if !gpu_filled && matches!(opts.gpu_backend, GpuBackend::Auto | GpuBackend::Nvidia) {
             if let Some(ref nvml) = self.nvml {
-                let gpu = nvml.query_gpu(0);
+                let gpu = nvml.query_gpu(opts.gpu_index);
                 if gpu.temp > 0.0 || gpu.load > 0.0 {
                     payload.gpu = gpu;
+                    gpu_filled = true;
                     debug!(
                         "NVML: GPU {:.1}°C {:.0}% {:.0}/{:.0}MHz {:.0}MB",
                         payload.gpu.temp,
@@ -363,9 +471,28 @@ impl HardwareMonitor {
             }
         }
 
-        // ── Priority 3: Standard WMI ──
+        // ── Priority 3: ADL (AMD GPU) ──
+        if !gpu_filled && matches!(opts.gpu_backend, GpuBackend::Auto | GpuBackend::Amd) {
+            if let Some(ref amd) = self.amd {
+                let gpu = amd.query_gpu(opts.gpu_index);
+                if gpu.temp > 0.0 || gpu.load > 0.0 {
+                    payload.gpu = gpu;
+                    // gpu_filled = true; // Não necessário — último fallback de GPU
+                    debug!(
+                        "ADL: GPU {:.1}°C {:.0}% {:.0}/{:.0}MHz {:.0}RPM",
+                        payload.gpu.temp,
+                        payload.gpu.load,
+                        payload.gpu.clock_core,
+                        payload.gpu.clock_mem,
+                        payload.gpu.fan,
+                    );
+                }
+            }
+        }
+
+        // ── Priority 4: Standard WMI ──
         if let Some(ref wmi_std) = self.wmi_cimv2 {
-            // Link speed (LHM não fornece)
+            // Link speed
             let (link, adapter) = wmi_sensors::query_link_speed(wmi_std);
             if link > 0 {
                 payload.network.link_speed_mbps = link;
@@ -378,7 +505,7 @@ impl HardwareMonitor {
             }
         }
 
-        // ── Priority 4: ACPI temp fallback ──
+        // ── Priority 5: ACPI temp fallback ──
         if payload.cpu.temp == 0.0 {
             if let Some(ref wmi_acpi) = self.wmi_acpi {
                 payload.cpu.temp = wmi_sensors::query_acpi_temp(wmi_acpi);
@@ -392,32 +519,36 @@ impl HardwareMonitor {
 // ──────────────────────────────────────────────
 
 #[cfg(windows)]
-fn init_wmi_connections() -> (
-    Option<WMIConnection>,
-    Option<WMIConnection>,
-    Option<WMIConnection>,
-) {
+fn init_wmi_connections(
+    use_lhm: bool,
+) -> (Option<WMIConnection>, Option<WMIConnection>, Option<WMIConnection>) {
     // ── LHM WMI (root\LibreHardwareMonitor) ──
-    let wmi_lhm = COMLibrary::new()
-        .ok()
-        .and_then(|com| {
-            WMIConnection::with_namespace_path("root\\LibreHardwareMonitor", com).ok()
-        })
-        .and_then(|wmi| {
-            if lhm_sensors::check_available(&wmi) {
-                let count = lhm_sensors::sensor_count(&wmi);
-                info!("✓ LHM WMI: {count} sensores disponíveis");
-                Some(wmi)
-            } else {
-                None
-            }
-        });
+    let wmi_lhm = if use_lhm {
+        let wmi = COMLibrary::new()
+            .ok()
+            .and_then(|com| {
+                WMIConnection::with_namespace_path("root\\LibreHardwareMonitor", com).ok()
+            })
+            .and_then(|wmi| {
+                if lhm_sensors::check_available(&wmi) {
+                    let count = lhm_sensors::sensor_count(&wmi);
+                    info!("✓ LHM WMI: {count} sensores disponíveis");
+                    Some(wmi)
+                } else {
+                    None
+                }
+            });
 
-    if wmi_lhm.is_none() {
-        warn!("✗ LHM WMI: não detectado");
-        warn!("  → Para sensores completos (CPU temp/voltage/power, GPU, Mobo, Storage temp):");
-        warn!("    Instale LibreHardwareMonitor e rode como admin ou serviço Windows");
-    }
+        if wmi.is_none() {
+            warn!("✗ LHM WMI: não detectado");
+            warn!("  → Para sensores completos (CPU temp/voltage/power, Mobo, Storage temp):");
+            warn!("    Instale LibreHardwareMonitor e rode como admin ou serviço Windows");
+        }
+        wmi
+    } else {
+        info!("LHM desativado por configuração (sender.use_lhm = false)");
+        None
+    };
 
     // ── Standard WMI (root\CIMv2) ──
     let wmi_cimv2 = COMLibrary::new()
@@ -440,10 +571,10 @@ fn init_wmi_connections() -> (
 // Helpers
 // ──────────────────────────────────────────────
 
-/// Aplica temperaturas do LHM aos StorageData do sysinfo.
+/// Aplica temperaturas a StorageData por nome fuzzy.
 #[cfg(windows)]
-fn apply_storage_temps(storages: &mut [StorageData], lhm_temps: &[(String, f32)]) {
-    for (drive_name, temp) in lhm_temps {
+fn apply_storage_temps(storages: &mut [StorageData], temps: &[(String, f32)]) {
+    for (drive_name, temp) in temps {
         let mut matched = false;
 
         // Tentar match por nome
